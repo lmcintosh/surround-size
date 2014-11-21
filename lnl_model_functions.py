@@ -45,7 +45,7 @@ def gaussian(x=np.linspace(-5,5,50),sigma=1.,mu=0.):
      return np.array([(1./(2.*pi*sigma**2))*np.exp((-(xi-mu)**2.)/(2.*sigma**2)) for xi in x])
 
 # return a 2d difference of Gaussians with zero mean and unit variance
-def spatial_filter_2d(c_width=1.,s_width=2.,xs_num=50):
+def spatial_filter_2d(c_width=1.,s_width=2.,xs_num=50, alpha=1., beta=1.):
     xs = np.linspace(-5,5,xs_num)
     S = gaussian(x=xs, sigma=s_width)
     C = gaussian(x=xs, sigma=c_width)
@@ -63,7 +63,7 @@ def spatial_filter_2d(c_width=1.,s_width=2.,xs_num=50):
     S_2d = S_2d/np.max(S_2d)
     # Make center have same integral as surround
     C_2d = (np.sum(S_2d)/np.sum(C_2d))*C_2d
-    X = C_2d - S_2d
+    X = alpha*C_2d - beta*S_2d
     
     return X/np.sqrt(np.var(X))
 
@@ -148,7 +148,7 @@ def lnl_output(stimulus,filter1,filter2=0.,nonlinearThreshold=1.,nonlinearGain=0
         return ns + linear_output(stimulus,filter2,1,borderDist=stimulus.shape[0]//2)
     # FULL LNL MODEL WITH OR WITHOUT NOISE
     elif key == 3:
-        ls = linear_output(stimulus,filter1,numSubunits,borderDist=0)
+        ls = linear_output(stimulus,filter1,numSubunits,borderDist=int(stimulus.shape[0]//10)) # borderDist was 0
         ns = np.array([nonlinearity(l,g=nonlinearGain,theta=nonlinearThreshold) for l in ls]).reshape((numSubunits,numSubunits))
         if SNR == 'Inf':
             return linear_output(ns,filter2,1,borderDist=numSubunits//2)
