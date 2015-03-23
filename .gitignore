@@ -61,3 +61,6 @@ target/
 
 # hide images
 *.png
+
+# hide MacVim swap files
+*.swp
