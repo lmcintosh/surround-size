@@ -1,3 +1,4 @@
+import numpy as np
 from os import listdir
 from os.path import isfile, join
 import array as ar
@@ -36,7 +37,7 @@ def load_images(path, numImages, patchSize=None, acceptedExtensions=['.imc','LUM
             img        = img[img_center[0]-patchSize/2:img_center[0]+patchSize/2,img_center[1]-patchSize/2:img_center[1]+patchSize/2]
             
         if square:
-            N = min(shape(img))
+            N = min(np.shape(img))
             N = N - (N % 2) # make even
             img = img[:N,:N]
         
@@ -60,7 +61,7 @@ def cart2pol(x, y):
 
 def rotavg(im):
     '''im can be square 2d numpy array'''
-    imShape = shape(im) # NNM
+    imShape = im.shape # NNM
     N       = imShape[0]
     X, Y    = np.meshgrid(range(-N//2,N//2),range(-N//2,N//2))
 
@@ -71,11 +72,11 @@ def rotavg(im):
     return f
 
 def spectrum2d(arr, Fs=1000.0, frequencyFlag=True):
-    amp = abs(fftshift(fft2(arr)))/np.prod(arr.shape)
+    amp = abs(np.fft.fftshift(np.fft.fft2(arr)))/np.prod(arr.shape)
     amp = rotavg(amp)
     n = len(amp)
     #amp = amp/n
-    k = arange(n)
+    k = np.arange(n)
     T = n/Fs
     frq = k/(2*T) # two sides frequency range
     #frq = frq[range(n/2)] # one side frequency range
