@@ -67,7 +67,7 @@ def rotavg(im):
 
     theta, rho = cart2pol(X,Y);
     rho = rho.round()
-    f   = [mean(im[np.where(rho==r)]) for r in range(N//2+1)] 
+    f   = [np.mean(im[np.where(rho==r)]) for r in range(N//2+1)] 
         
     return f
 
