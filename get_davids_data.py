@@ -130,3 +130,41 @@ def get_horizontal_projective_field(micronsPerDeg=50.):
     return spatial_pfs
 
 
+def get_amacrine_projective_fft(micronsPerDeg=50.):
+    '''Returns tuples of (frequencies, amplitude spectrum)
+    for amacrine projective field.
+    '''
+    spatial_pfs = get_amacrine_projective_field(micronsPerDeg=micronsPerDeg)
+    spatial_fft = []
+
+    for space, pf in spatial_pfs:
+        pf_f_two_sided = abs(np.fft.fftshift(np.fft.fft(pf)))
+        pf_f_one_sided = pf_f_two_sided[len(pf_f_two_sided)/2:]
+
+        Fs = space[-1] - space[-2]
+        pf_freqs_two_sided = np.fft.fftshift(np.fft.fftfreq(len(pf_f_two_sided), Fs))
+        pf_freqs_one_sided = pf_freqs_two_sided[len(pf_freqs_two_sided)/2:]
+
+        spatial_fft.append((pf_freqs_one_sided, pf_f_one_sided))
+    
+    return spatial_fft
+
+def get_horizontal_projective_fft(micronsPerDeg=50.):
+    '''Returns tuples of (frequencies, amplitude spectrum)
+    for horizontal projective field.
+    '''
+    spatial_pfs = get_horizontal_projective_field(micronsPerDeg=micronsPerDeg)
+    spatial_fft = []
+
+    for space, pf in spatial_pfs:
+        pf_f_two_sided = abs(np.fft.fftshift(np.fft.fft(pf)))
+        pf_f_one_sided = pf_f_two_sided[len(pf_f_two_sided)/2:]
+
+        Fs = space[-1] - space[-2]
+        pf_freqs_two_sided = np.fft.fftshift(np.fft.fftfreq(len(pf_f_two_sided), Fs))
+        pf_freqs_one_sided = pf_freqs_two_sided[len(pf_freqs_two_sided)/2:]
+
+        spatial_fft.append((pf_freqs_one_sided, pf_f_one_sided))
+    
+    return spatial_fft
+
