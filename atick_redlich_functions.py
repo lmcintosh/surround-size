@@ -51,7 +51,7 @@ def unique_soln(r0, inputNoise, outputNoise, verbose=True):
 def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space_a=None, proj_a=None, 
         inputNoise=0.1, outputNoise=0.4, center_weighting=2.1, surround_weighting=0.1,
         horz_weighting=0.5, ama_weighting=0.5, centerWidth=.5, interpolation='fit', 
-        numPoints=1000, returnFlag=False, plotFlag=True, verbose=True):
+        numPoints=1000, returnFlag=False, plotFlag='aggregate', verbose=True, xlimit=None):
     ''' Compare ideal infomax filter to experimental projective fields.
     INPUTS:
     frequencies: np array of spatial frequencies corresponding to spectra
@@ -117,8 +117,9 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         idealFilter = unique_soln(moreSpectra, inputNoise, outputNoise, verbose=verbose) # spectra, input_noise, output_noise
     elif interpolation == 'fit':
         # power law
-        def func(x, a, b, c):
-            return a/(x**b) + c
+        def func(x, a, b):
+            return a/(x**b) # adding a constant tends to make moreSpectra have negative numbers
+
         popt, pcov  = curve_fit(func, frequencies[1:], spectra[1:])
         moreFreqs   = np.linspace(0., frequencies[-1], numPoints)[1:]
         moreSpectra = func(moreFreqs, *popt)
@@ -126,11 +127,26 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
     elif interpolation is None:
         idealFilter = unique_soln(spectra, inputNoise, outputNoise, verbose=verbose)
         
+    if plotFlag == 'aggregate':
+        plt.plot(moreFreqs, idealFilter, 'r', linewidth=3, alpha=0.8)
+        plt.plot(rf_freqs_one_sided, rf_f_one_sided, 'k', linewidth=3, alpha=0.8)
+        if xlimit:
+            plt.xlim(xlimit)
+    elif plotFlag == 'separate':
+        horz_ffts = get_horizontal_projective_fft()
+        ama_ffts  = get_amacrine_projective_fft()
+
+        # for now just pick one
+        freq_h, horz_fft = horz_ffts[0]
+        freq_a, ama_fft  = ama_ffts[0]
+
         
-    
-    if plotFlag:
-        plt.plot(moreFreqs, idealFilter, 'r.', linewidth=2)
-        plt.plot(rf_freqs_one_sided, rf_f_one_sided, 'k.', linewidth=2)
+        plt.plot(moreFreqs, idealFilter/np.nanmax(idealFilter), 'b.-', linewidth=3, alpha=0.8, markersize=10)
+        plt.plot(freq_h, 1 - horz_fft/np.max(horz_fft), 'g.-', linewidth=3, alpha=0.8, markersize=10)
+        plt.plot(freq_a, 1 - ama_fft/np.max(ama_fft), 'c.-', linewidth=3, alpha=0.8, markersize=10)
+        if xlimit:
+            plt.xlim(xlimit)
+
     
     if returnFlag:
         try:
