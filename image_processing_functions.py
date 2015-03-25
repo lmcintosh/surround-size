@@ -74,16 +74,10 @@ def rotavg(im):
 def spectrum2d(arr, Fs=1000.0, frequencyFlag=True):
     amp = abs(np.fft.fftshift(np.fft.fft2(arr)))/np.prod(arr.shape)
     amp = rotavg(amp)
-    n = len(amp)
-    #amp = amp/n
-    k = np.arange(n)
-    T = n/Fs
-    frq = k/(2*T) # two sides frequency range
-    #frq = frq[range(n/2)] # one side frequency range
-    
+    n   = len(amp)
+    frq = np.fft.fftfreq(2*n, 1./Fs)[:n] 
+
     if frequencyFlag:
-        #return (frq, [a/n**2 for a in amp])  # should n be squared?
         return (frq, amp)
     else:
-        #return [a/n**2 for a in amp]  # should n be squared?
         return amp
