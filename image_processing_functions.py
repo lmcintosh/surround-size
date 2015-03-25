@@ -71,11 +71,11 @@ def rotavg(im):
         
     return f
 
-def spectrum2d(arr, Fs=1000.0, frequencyFlag=True):
+def spectrum2d(arr, spacing=1.0, frequencyFlag=True):
     amp = abs(np.fft.fftshift(np.fft.fft2(arr)))/np.prod(arr.shape)
     amp = rotavg(amp)
     n   = len(amp)
-    frq = np.fft.fftfreq(2*n, 1./Fs)[:n] 
+    frq = np.fft.fftfreq(2*n, spacing)[:n] 
 
     if frequencyFlag:
         return (frq, amp)
