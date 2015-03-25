@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
 
 # my functions
 from lnl_model_functions import *
@@ -71,6 +72,7 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         # for now just pick one of each
         space_h, horz_pf = horz_pfs[0]
         space_a, ama_pf  = ama_pfs[0]
+        space            = space_h
 
         assert len(space_h) == len(space_a), 'Horizontal and amacrine space must be the same.'
         
@@ -84,7 +86,7 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
     surround       = horz_weighting * horz_pf + ama_weighting * ama_pf
 
     # make center
-    center         = gaussian(x=space, sigma=centerWidth, mu=space[surround==np.max(abs(surround))]) # gaussian
+    center         = gaussian(x=space, sigma=centerWidth, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
     #center         = center_weighting * np.where(surround==np.min(surround), 1, 0) # delta function
 
     # put them together
@@ -115,7 +117,7 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         # power law
         def func(x, a, b, c):
             return a/(x**b) + c
-        popt, pcov  = curve_fit(func, originalFreqs[1:], originalSpectra[1:])
+        popt, pcov  = curve_fit(func, frequencies[1:], spectra[1:])
         moreFreqs   = np.linspace(0., frequencies[-1], numPoints)[1:]
         moreSpectra = func(moreFreqs, *popt)
         idealFilter = unique_soln(moreSpectra, inputNoise, outputNoise, verbose=verbose) # spectra, input_noise, output_noise
@@ -125,8 +127,8 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         
     
     if plotFlag:
-        plot(moreFreqs, idealFilter, 'r.', linewidth=2)
-        plot(rf_freqs_one_sided, rf_f_one_sided, 'k.', linewidth=2)
+        plt.plot(moreFreqs, idealFilter, 'r.', linewidth=2)
+        plt.plot(rf_freqs_one_sided, rf_f_one_sided, 'k.', linewidth=2)
     
     if returnFlag:
         try:
