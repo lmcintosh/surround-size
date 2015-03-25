@@ -9,6 +9,8 @@ from lnl_model_functions import *
 from get_davids_data import *
 
 def get_lambda(r0, inputNoise, outputNoise):
+
+    assert np.min(r0) >= 0, 'Uhoh, the power spectra is negative!'
     
     N = inputNoise
     def lhs(lam):
