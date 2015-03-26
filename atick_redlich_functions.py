@@ -50,7 +50,7 @@ def unique_soln(r0, inputNoise, outputNoise, verbose=True):
 
 def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space_a=None, proj_a=None, 
         inputNoise=0.1, outputNoise=0.4, center_weighting=2.1, surround_weighting=0.1,
-        horz_weighting=0.5, ama_weighting=0.5, centerWidth=.5, interpolation='fit', 
+        horz_weighting=0.5, ama_weighting=0.5, center_width=.5, interpolation='fit', 
         numPoints=1000, returnFlag=False, plotFlag='aggregate', verbose=True, xlimit=None):
     ''' Compare ideal infomax filter to experimental projective fields.
     INPUTS:
@@ -88,8 +88,10 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
     surround       = horz_weighting * horz_pf + ama_weighting * ama_pf
 
     # make center
-    center         = gaussian(x=space, sigma=centerWidth, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
-    #center         = center_weighting * np.where(surround==np.min(surround), 1, 0) # delta function
+    if center_width is None:
+        center = center_weighting * np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+    else:
+        center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
 
     # put them together
     if len(center.shape) > 1:
