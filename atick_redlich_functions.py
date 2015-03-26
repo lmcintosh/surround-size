@@ -142,10 +142,45 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         freq_h, horz_fft = horz_ffts[0]
         freq_a, ama_fft  = ama_ffts[0]
 
-        
-        plt.plot(moreFreqs, idealFilter/np.nanmax(idealFilter), 'b.-', linewidth=3, alpha=0.8, markersize=10)
-        plt.plot(freq_h, 1 - horz_fft/np.max(horz_fft), 'g.-', linewidth=3, alpha=0.8, markersize=10)
-        plt.plot(freq_a, 1 - ama_fft/np.max(ama_fft), 'c.-', linewidth=3, alpha=0.8, markersize=10)
+        flag = 'exp'
+
+        if flag == 'interp':
+            # interpolate horizontal and amacrine projective field filters in frequency space
+            horz_interpolate = interp1d(freq_h, 1-horz_fft/np.max(horz_fft), kind='slinear')
+            ama_interpolate  = interp1d(freq_a, 1-ama_fft/np.max(ama_fft), kind='slinear')
+
+            horz_interpolate_x = np.linspace(freq_h[0], freq_h[-1], len(moreFreqs))
+            ama_interpolate_x  = np.linspace(freq_a[0], freq_a[-1], len(moreFreqs))
+
+            horz_fit = horz_interpolate(horz_interpolate_x)
+            ama_fit  = ama_interpolate(ama_interpolate_x)
+
+        elif flag == 'exp':
+            def func(x, a, b, c):
+                # exponential
+                y = a * np.exp(-b * x) + c
+
+                # power law
+                #y = a / x**b + c
+                #y[x==0] = np.max(y[np.isfinite(y)])
+
+                return 1 - y/np.max(y)
+
+            popt_horz, pcov_horz = curve_fit(func, freq_h, 1-horz_fft/np.max(horz_fft))
+            popt_ama, pcov_ama   = curve_fit(func, freq_a, 1-ama_fft/np.max(ama_fft))
+            
+            horz_interpolate_x = np.linspace(freq_h[0], freq_h[-1], len(moreFreqs))
+            ama_interpolate_x  = np.linspace(freq_a[0], freq_a[-1], len(moreFreqs))
+            
+            horz_fit = func(horz_interpolate_x, *popt_horz)
+            ama_fit  = func(ama_interpolate_x, *popt_ama)
+
+                
+        plt.plot(moreFreqs, idealFilter/np.nanmax(idealFilter), 'b-', linewidth=3, alpha=0.5) 
+        plt.plot(horz_interpolate_x, horz_fit, 'g', linewidth=2, alpha=0.8)
+        plt.plot(ama_interpolate_x, ama_fit, 'c', linewidth=2, alpha=0.8)
+        plt.plot(freq_h, 1 - horz_fft/np.max(horz_fft), 'g.', alpha=0.8, markersize=10)
+        plt.plot(freq_a, 1 - ama_fft/np.max(ama_fft), 'c.', alpha=0.8, markersize=10)
         if xlimit:
             plt.xlim(xlimit)
 

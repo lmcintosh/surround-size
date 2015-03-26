@@ -4,7 +4,7 @@ from os.path import isfile, join
 import array as ar
 import scipy.io
 
-def load_images(path, numImages, patchSize=None, acceptedExtensions=['.imc','LUM.mat'], square=False, normalize='subtract'):
+def load_images(path, numImages, patchSize=None, acceptedExtensions=['.imc','LUM.mat'], square=False, normalize='subtract', effective_contrast=None):
     ''' Load images and return a list of numpy arrays.'''
     
     allfiles = []
@@ -48,7 +48,11 @@ def load_images(path, numImages, patchSize=None, acceptedExtensions=['.imc','LUM
             patches.append(img/np.std(img))
         elif normalize == 'divisive':
             # normalize by the mean
-            patches.append(img/np.mean(img))
+            if effective_contrast is None:
+                patches.append(img/np.mean(img))
+            else:
+                patches.append(effective_contrast*img/np.mean(img))
+
         else:
             patches.append(img)
 
