@@ -28,6 +28,34 @@ def load_ganglion_cells(micronsPerDeg=50.):
 
     return spatial_rfs
 
+def load_bipolar_cells(micronsPerDeg=50.):
+    ''' Returns list of tuples (space, spatial receptive field)
+    '''
+
+    data_path  = expanduser('~/Documents/Stanford/00 Baccus Lab/Surround size project/david_receptive_fields')
+    file_name1 = data_path + '/B1.txt'
+    file_name2 = data_path + '/B2.txt'
+    data_b1    = np.loadtxt(file_name1, delimiter="\t") # 50 time x 100 space
+    data_b2    = np.loadtxt(file_name2, delimiter="\t") # 50 time x 100 space
+    data_b     = [data_b1, data_b2]
+
+    # get spacing for spatial receptive fields
+    spatialDelta = 0.022 # mm
+    space = np.linspace(-spatialDelta*data_b1.shape[1]/2., spatialDelta*data_b1.shape[1]/2., data_b1.shape[1])
+    assert data_b1.shape[1] == data_b2.shape[1], 'Two bipolar cells should have the same shape.'
+    space *= 1000 # mm to microns
+    space /= micronsPerDeg
+
+    # since receptive fields are noisy, use PCA
+    spatial_rfs = []
+    for b in data_b:
+        pca = PCA(n_components=2)
+        pca.fit(b)
+
+        spatial_rfs.append((space, pca.components_[0]))
+
+    return spatial_rfs
+
 
 def load_amacrine_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
