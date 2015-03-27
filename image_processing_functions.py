@@ -48,10 +48,13 @@ def load_images(path, numImages, patchSize=None, acceptedExtensions=['.imc','LUM
             patches.append(img/np.std(img))
         elif normalize == 'divisive':
             # normalize by the mean
-            if effective_contrast is None:
-                patches.append(img/np.mean(img))
+            if effective_contrast:
+                img = img/np.mean(img) # can't use /= because img.dtype is uint16
+                img /= np.std(img)
+                img += 1./effective_contrast - np.mean(img)
+                patches.append(img)
             else:
-                patches.append(effective_contrast*img/np.mean(img))
+                patches.append(img/np.mean(img))
 
         else:
             patches.append(img)
