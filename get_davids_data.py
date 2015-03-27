@@ -52,7 +52,10 @@ def load_bipolar_cells(micronsPerDeg=50.):
         pca = PCA(n_components=2)
         pca.fit(b)
 
-        spatial_rfs.append((space, pca.components_[0]))
+        b_pca      = pca.components_[0]
+        sign_of_pc = -1 * np.sign(b_pca[abs(b_pca) == np.max(abs(b_pca))])
+
+        spatial_rfs.append((space, sign_of_pc * b_pca))
 
     return spatial_rfs
 
