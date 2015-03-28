@@ -60,7 +60,11 @@ def load_ganglion_cells(micronsPerDeg=50.):
         pca = PCA(n_components=2)
         pca.fit(data_gc[:,:,n])
 
-        spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0]))
+        g_pca      = pca.components_[0]
+        sign_of_pc = -1 * np.sign(g_pca[abs(g_pca) == np.max(abs(g_pca))])
+        space      = get_space(g_pca, spatialDelta, micronsPerDeg)
+
+        spatial_rfs.append((space, sign_of_pc * g_pca))
 
     return spatial_rfs
 
