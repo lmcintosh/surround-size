@@ -38,7 +38,21 @@ def get_mean(data, interpolation='slinear', nPoints=200):
     errors = sem(np.vstack(aligned_y), axis=0)
 
     return (aligned_x, mean_y, errors)
-    
+
+def get_fft(data):
+    ffts = []
+
+    for space, y in data:
+        fft_two_sided = abs(np.fft.fftshift(np.fft.fft(y)))
+        fft_one_sided = fft_two_sided[len(fft_two_sided)/2:]
+
+        Fs = space[-1] - space[-2]
+        freqs_two_sided = np.fft.fftshift(np.fft.fftfreq(len(fft_two_sided), Fs))
+        freqs_one_sided = freqs_two_sided[len(freqs_two_sided)/2:]
+
+        ffts.append((freqs_one_sided, fft_one_sided))
+
+    return ffts
 
 
 def load_ganglion_cells(micronsPerDeg=50.):
@@ -226,4 +240,3 @@ def get_horizontal_projective_fft(micronsPerDeg=50.):
         spatial_fft.append((pf_freqs_one_sided, pf_f_one_sided))
     
     return spatial_fft
-
