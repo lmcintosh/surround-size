@@ -1,6 +1,45 @@
 import numpy as np
 from sklearn.decomposition import PCA
 from os.path import expanduser
+from scipy.interpolate import interp1d
+from scipy.stats import sem
+
+def get_space(rf, spatial_delta, microns_per_deg):
+    '''Returns a spatial vector for each point in 1d vector rf,
+    with zero degrees aligned to the max(abs(rf)).
+    INPUT:
+    rf              is a 1d numpy array
+    spatial_delta   is a float in mm
+    microns_per_deg is a float in microns/deg
+    
+    RETURNS:
+    space           is a 1d numpy array in degrees
+    '''
+    peak  = np.argmax(abs(rf))
+    space = np.linspace(-spatial_delta*peak, spatial_delta*(len(rf)-peak), len(rf))
+    space *= 1000 # mm to microns
+    space /= microns_per_deg
+    return space
+
+def get_mean_rf(spatial_rfs, interpolation='slinear', nPoints=200):
+    '''Return (space, mean_rf, error) tuple. Input should be list of (space, rf) tuples.
+    '''
+    max_spaces    = np.max([np.max(space) for space, rf in spatial_rfs])
+    min_spaces    = np.min([np.min(space) for space, rf in spatial_rfs])
+    aligned_space = np.linspace(min_spaces, max_spaces, nPoints)
+    aligned_rfs   = []
+
+    for space, rf in spatial_rfs:
+        # fill out of bounds with nans
+        rf_interp = interp1d(space, rf, kind=interpolation, bounds_error=False)
+        aligned_rfs.append(rf_interp(aligned_space))
+
+    our_mean = np.mean(np.vstack(aligned_rfs), axis=0)
+    our_sem  = sem(np.vstack(aligned_rfs), axis=0)
+
+    return (aligned_space, our_mean, our_sem)
+    
+
 
 def load_ganglion_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
