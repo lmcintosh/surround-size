@@ -21,23 +21,23 @@ def get_space(rf, spatial_delta, microns_per_deg):
     space /= microns_per_deg
     return space
 
-def get_mean_rf(spatial_rfs, interpolation='slinear', nPoints=200):
-    '''Return (space, mean_rf, error) tuple. Input should be list of (space, rf) tuples.
+def get_mean(data, interpolation='slinear', nPoints=200):
+    '''Return (space, mean_rf, error) tuple. Input should be list of (x, y) tuples (e.g. (space, rf)).
     '''
-    max_spaces    = np.max([np.max(space) for space, rf in spatial_rfs])
-    min_spaces    = np.min([np.min(space) for space, rf in spatial_rfs])
-    aligned_space = np.linspace(min_spaces, max_spaces, nPoints)
-    aligned_rfs   = []
+    max_x     = np.max([np.max(x) for x, y in data])
+    min_x     = np.min([np.min(x) for x, y in data])
+    aligned_x = np.linspace(min_x, max_x, nPoints)
+    aligned_y = []
 
-    for space, rf in spatial_rfs:
+    for x, y in data:
         # fill out of bounds with nans
-        rf_interp = interp1d(space, rf, kind=interpolation, bounds_error=False)
-        aligned_rfs.append(rf_interp(aligned_space))
+        y_interp = interp1d(x, y, kind=interpolation, bounds_error=False)
+        aligned_y.append(y_interp(aligned_x))
 
-    mean_rf = np.nanmean(np.vstack(aligned_rfs), axis=0)
-    errors  = sem(np.vstack(aligned_rfs), axis=0)
+    mean_y = np.nanmean(np.vstack(aligned_y), axis=0)
+    errors = sem(np.vstack(aligned_y), axis=0)
 
-    return (aligned_space, mean_rf, errors)
+    return (aligned_x, mean_y, errors)
     
 
 
@@ -167,8 +167,7 @@ def get_amacrine_projective_field(micronsPerDeg=50.):
     for space, rf in spatial_rfs:
         proj_range = [np.exp(-abs(t)/time_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
         proj_field = np.convolve(proj_range, rf, mode='same')
-        scaling    = np.mean(rf) / np.mean(proj_field)
-        proj_field *= scaling
+        proj_field *= np.mean(rf) / np.mean(proj_field)
 
         spatial_pfs.append((space, proj_field))
 
@@ -183,8 +182,7 @@ def get_horizontal_projective_field(micronsPerDeg=50.):
     for space, rf in spatial_rfs:
         proj_range = [np.exp(-abs(t)/time_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
         proj_field = np.convolve(proj_range, rf, mode='same')
-        scaling    = np.mean(rf) / np.mean(proj_field)
-        proj_field *= scaling
+        proj_field *= np.mean(rf) / np.mean(proj_field)
 
         spatial_pfs.append((space, proj_field))
 
