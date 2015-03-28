@@ -34,10 +34,10 @@ def get_mean_rf(spatial_rfs, interpolation='slinear', nPoints=200):
         rf_interp = interp1d(space, rf, kind=interpolation, bounds_error=False)
         aligned_rfs.append(rf_interp(aligned_space))
 
-    our_mean = np.mean(np.vstack(aligned_rfs), axis=0)
-    our_sem  = sem(np.vstack(aligned_rfs), axis=0)
+    mean_rf = np.nanmean(np.vstack(aligned_rfs), axis=0)
+    errors  = sem(np.vstack(aligned_rfs), axis=0)
 
-    return (aligned_space, our_mean, our_sem)
+    return (aligned_space, mean_rf, errors)
     
 
 
