@@ -53,9 +53,6 @@ def load_ganglion_cells(micronsPerDeg=50.):
 
     # get spacing for spatial receptive fields
     spatialDelta = 0.027 # mm
-    space = np.linspace(-spatialDelta*data_gc.shape[1]/2., spatialDelta*data_gc.shape[1]/2., data_gc.shape[1])
-    space *= 1000 # mm to microns
-    space /= micronsPerDeg
 
     # since receptive fields are noisy, use PCA
     spatial_rfs = []
@@ -63,7 +60,7 @@ def load_ganglion_cells(micronsPerDeg=50.):
         pca = PCA(n_components=2)
         pca.fit(data_gc[:,:,n])
 
-        spatial_rfs.append((space, pca.components_[0]))
+        spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0]))
 
     return spatial_rfs
 
@@ -78,12 +75,8 @@ def load_bipolar_cells(micronsPerDeg=50.):
     data_b2    = np.loadtxt(file_name2, delimiter="\t") # 50 time x 100 space
     data_b     = [data_b1, data_b2]
 
-    # get spacing for spatial receptive fields
+    # get spacing for all bipolar spatial receptive fields
     spatialDelta = 0.022 # mm
-    space = np.linspace(-spatialDelta*data_b1.shape[1]/2., spatialDelta*data_b1.shape[1]/2., data_b1.shape[1])
-    assert data_b1.shape[1] == data_b2.shape[1], 'Two bipolar cells should have the same shape.'
-    space *= 1000 # mm to microns
-    space /= micronsPerDeg
 
     # since receptive fields are noisy, use PCA
     spatial_rfs = []
@@ -93,6 +86,7 @@ def load_bipolar_cells(micronsPerDeg=50.):
 
         b_pca      = pca.components_[0]
         sign_of_pc = -1 * np.sign(b_pca[abs(b_pca) == np.max(abs(b_pca))])
+        space      = get_space(b_pca, spatialDelta, micronsPerDeg)
 
         spatial_rfs.append((space, sign_of_pc * b_pca))
 
@@ -112,9 +106,6 @@ def load_amacrine_cells(micronsPerDeg=50.):
 
     # get spacing for spatial receptive fields
     spatialDelta = 0.027 # mm
-    space = np.linspace(-spatialDelta*data_a.shape[2]/2., spatialDelta*data_a.shape[2]/2., data_a.shape[2])
-    space *= 1000 # mm to microns
-    space /= micronsPerDeg
 
     # since receptive fields are noisy, use PCA
     spatial_rfs = []
@@ -122,7 +113,7 @@ def load_amacrine_cells(micronsPerDeg=50.):
         pca = PCA(n_components=2)
         pca.fit(data_a[n,:,:])
 
-        spatial_rfs.append((space, pca.components_[0]))
+        spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0]))
 
     return spatial_rfs
 
@@ -141,15 +132,12 @@ def load_horizontal_cells(micronsPerDeg=50.):
 
     # get spacing for spatial receptive fields
     spatialDelta = 0.027 # mm
-    space = np.linspace(-spatialDelta*data_h.shape[1]/2., spatialDelta*data_h.shape[1]/2., data_h.shape[1])
-    space *= 1000 # mm to microns
-    space /= micronsPerDeg
 
     # since receptive fields are noisy, use PCA
     spatial_rfs = []
     pca = PCA(n_components=2)
     pca.fit(data_h)
-    spatial_rfs.append((space, pca.components_[0]))
+    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0]))
 
 
     ###### CELL 2 ######
@@ -158,14 +146,11 @@ def load_horizontal_cells(micronsPerDeg=50.):
 
     # get spacing for spatial receptive fields
     spatialDelta = 0.022 # mm
-    space = np.linspace(-spatialDelta*data_h.shape[1]/2., spatialDelta*data_h.shape[1]/2., data_h.shape[1])
-    space *= 1000 # mm to microns
-    space /= micronsPerDeg
 
     # since receptive fields are noisy, use PCA
     pca = PCA(n_components=2)
     pca.fit(data_h)
-    spatial_rfs.append((space, pca.components_[0]))
+    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0]))
 
     return spatial_rfs
 
