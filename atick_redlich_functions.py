@@ -190,3 +190,14 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             return moreFreqs, idealFilter, rf_freqs_one_sided, rf_f_one_sided
         except:
             return frequencies, idealFilter, rf_freqs_one_sided, rf_f_one_sided
+
+
+def spectrum_fit(frequencies, spectrum, num_points=5000):
+    def func(x, a, b):
+            return a/(x**b) # adding a constant tends to make moreSpectra have negative numbers
+
+    popt, pcov  = curve_fit(func, frequencies[1:], spectrum[1:])
+    moreFreqs   = np.linspace(0., frequencies[-1], num_points)[1:]
+    moreSpectra = func(moreFreqs, *popt)
+
+    return (moreFreqs, moreSpectra)
