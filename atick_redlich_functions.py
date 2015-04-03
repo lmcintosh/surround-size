@@ -71,18 +71,21 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         horz_pfs = get_horizontal_projective_field()
         ama_pfs  = get_amacrine_projective_field()
 
-        # for now just pick one of each
-        space_h, horz_pf = horz_pfs[0]
-        space_a, ama_pf  = ama_pfs[0]
-        space            = space_h
+        # get means of the projective fields
+        space_h, horz_pf, horz_sem = get_mean(horz_pfs)
+        space_a, ama_pf, ama_sem   = get_mean(ama_pfs)
 
-        assert len(space_h) == len(space_a), 'Horizontal and amacrine space must be the same.'
-        
-        Fs_h = space_h[-1] - space_h[-2]
-        Fs_a = space_a[-1] - space_a[-2]
-        Fs   = Fs_h
+        # interpolate horz and ama to get a unified space
+        horz_interp = interp1d(space_h, horz_pf)
+        ama_interp  = interp1d(space_a, ama_pf)
+        space       = np.linspace(np.max([np.min(space_h), np.min(space_a)]), np.min([np.max(space_h), np.max(space_a)]), 200)
 
-        assert Fs_h == Fs_a, 'Horizontal and amacrine spacing must be the same.'
+        # project interpolations on unified space
+        horz_pf     = horz_interp(space)
+        ama_pf      = ama_interp(space)
+
+        # set sampling rate
+        Fs   = space[-1] - space[-2]
     
     # make surround
     surround       = horz_weighting * horz_pf + ama_weighting * ama_pf
