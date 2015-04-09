@@ -106,6 +106,38 @@ def averageFourierTransform2d(arrs, spacing=1.0, frequencyFlag=True, semFlag=Tru
     else:
         return mean_fft
 
+def averageAmplitudeSpectrum2d(arrs, spacing=1.0, frequencyFlag=True, semFlag=True):
+    all_ffts_2d = [np.fft.fftshift(abs(np.fft.fft2(arr)))/np.prod(arr.shape) for arr in arrs]
+    all_ffts_1d = [rotavg(fft_2d) for fft_2d in all_ffts_2d]
+    mean_fft    = np.mean(all_ffts_1d, axis=0)
+    sem_fft     = sem(all_ffts_1d)
+    freqs       = np.fft.fftfreq(2*len(mean_fft), spacing)[:len(mean_fft)]
+
+    if frequencyFlag and semFlag:
+        return mean_fft, freqs, sem_fft
+    elif frequencyFlag:
+        return mean_fft, freqs
+    elif semFlag:
+        return mean_fft, sem_fft
+    else:
+        return mean_fft
+
+def averagePowerSpectrum2d(arrs, spacing=1.0, frequencyFlag=True, semFlag=True):
+    all_ffts_2d = [np.fft.fftshift(abs(np.fft.fft2(arr))**2)/np.prod(arr.shape) for arr in arrs]
+    all_ffts_1d = [rotavg(fft_2d) for fft_2d in all_ffts_2d]
+    mean_fft    = np.mean(all_ffts_1d, axis=0)
+    sem_fft     = sem(all_ffts_1d)
+    freqs       = np.fft.fftfreq(2*len(mean_fft), spacing)[:len(mean_fft)]
+
+    if frequencyFlag and semFlag:
+        return mean_fft, freqs, sem_fft
+    elif frequencyFlag:
+        return mean_fft, freqs
+    elif semFlag:
+        return mean_fft, sem_fft
+    else:
+        return mean_fft
+
 def averageFourierTransform1d(arrs, spacing=1.0, frequencyFlag=True, semFlag=True):
     n = len(arrs[0])
     if n % 2 == 0:
@@ -125,3 +157,40 @@ def averageFourierTransform1d(arrs, spacing=1.0, frequencyFlag=True, semFlag=Tru
     else:
         return mean_fft
 
+def averageAmplitudeSpectrum1d(arrs, spacing=1.0, frequencyFlag=True, semFlag=True):
+    n = len(arrs[0])
+    if n % 2 == 0:
+        all_ffts = [(abs(np.fft.fft(arr))/np.prod(arr.shape))[:n/2 + 1] for arr in arrs]
+    else:
+        all_ffts = [(abs(np.fft.fft(arr))/np.prod(arr.shape))[:(n-1)/2 + 1] for arr in arrs]
+    mean_fft = np.mean(all_ffts, axis=0)
+    sem_fft  = sem(all_ffts)
+    freqs    = np.linspace(0,1./(2*spacing), len(mean_fft))
+
+    if frequencyFlag and semFlag:
+        return mean_fft, freqs, sem_fft
+    elif frequencyFlag:
+        return mean_fft, freqs
+    elif semFlag:
+        return mean_fft, sem_fft
+    else:
+        return mean_fft
+
+def averagePowerSpectrum1d(arrs, spacing=1.0, frequencyFlag=True, semFlag=True):
+    n = len(arrs[0])
+    if n % 2 == 0:
+        all_ffts = [((abs(np.fft.fft(arr))**2)/np.prod(arr.shape))[:n/2 + 1] for arr in arrs]
+    else:
+        all_ffts = [((abs(np.fft.fft(arr))**2)/np.prod(arr.shape))[:(n-1)/2 + 1] for arr in arrs]
+    mean_fft = np.mean(all_ffts, axis=0)
+    sem_fft  = sem(all_ffts)
+    freqs    = np.linspace(0,1./(2*spacing), len(mean_fft))
+
+    if frequencyFlag and semFlag:
+        return mean_fft, freqs, sem_fft
+    elif frequencyFlag:
+        return mean_fft, freqs
+    elif semFlag:
+        return mean_fft, sem_fft
+    else:
+        return mean_fft
