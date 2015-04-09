@@ -39,16 +39,30 @@ def get_mean(data, interpolation='slinear', nPoints=200):
 
     return (aligned_x, mean_y, errors)
 
-def get_fft(data):
+def get_fft(data, mode='fourier'):
+    '''Return (frq, fft) tuple.
+       Mode can be 'fourier', 'amplitude', or 'power'
+    '''
     ffts = []
 
     for space, y in data:
-        fft_two_sided = abs(np.fft.fftshift(np.fft.fft(y)))
-        fft_one_sided = fft_two_sided[len(fft_two_sided)/2:]
+        if mode == 'fourier':
+            fft_two_sided = np.fft.fft(y)
+        if mode == 'amplitude':
+            fft_two_sided = abs(np.fft.fft(y))
+        if mode == 'power':
+            fft_two_sided = abs(np.fft.fft(y))**2
+        n = len(fft_two_sided)
+        if n % 2 == 0:
+            fft_one_sided = fft_two_sided[:n/2 + 1]
+        else:
+            fft_one_sided = fft_two_sided[:(n-1)/2 + 1]
 
-        Fs = space[-1] - space[-2]
-        freqs_two_sided = np.fft.fftshift(np.fft.fftfreq(len(fft_two_sided), Fs))
-        freqs_one_sided = freqs_two_sided[len(freqs_two_sided)/2:]
+        spacing = space[-1] - space[-2]
+        freqs_one_sided = np.linspace(0, 1./(2*spacing), len(fft_one_sided))
+
+        #freqs_two_sided = np.fft.fftshift(np.fft.fftfreq(len(fft_two_sided), Fs))
+        #freqs_one_sided = freqs_two_sided[len(freqs_two_sided)/2:]
 
         ffts.append((freqs_one_sided, fft_one_sided))
 
