@@ -3,6 +3,7 @@ from os import listdir
 from os.path import isfile, join
 import array as ar
 import scipy.io
+from scipy.stats import sem
 
 def load_images(path, numImages, patchSize=None, acceptedExtensions=['.imc','LUM.mat'], square=False, normalize='subtract', effective_contrast=None):
     ''' Load images and return a list of numpy arrays.'''
@@ -88,3 +89,39 @@ def spectrum2d(arr, spacing=1.0, frequencyFlag=True):
         return (frq, amp)
     else:
         return amp
+
+def averageFourierTransform2d(arrs, spacing=1.0, frequencyFlag=True, semFlag=True):
+    all_ffts_2d = [np.fft.fftshift(np.fft.fft2(arr))/np.prod(arr.shape) for arr in arrs]
+    all_ffts_1d = [rotavg(fft_2d) for fft_2d in all_ffts_2d]
+    mean_fft    = np.mean(all_ffts_1d, axis=0)
+    sem_fft     = sem(all_ffts_1d)
+    freqs       = np.fft.fftfreq(2*len(mean_fft), spacing)[:len(mean_fft)]
+
+    if frequencyFlag and semFlag:
+        return mean_fft, freqs, sem_fft
+    elif frequencyFlag:
+        return mean_fft, freqs
+    elif semFlag:
+        return mean_fft, sem_fft
+    else:
+        return mean_fft
+
+def averageFourierTransform1d(arrs, spacing=1.0, frequencyFlag=True, semFlag=True):
+    n = len(arrs[0])
+    if n % 2 == 0:
+        all_ffts = [(np.fft.fft(arr)/np.prod(arr.shape))[:n/2 + 1] for arr in arrs]
+    else:
+        all_ffts = [(np.fft.fft(arr)/np.prod(arr.shape))[:(n-1)/2 + 1] for arr in arrs]
+    mean_fft = np.mean(all_ffts, axis=0)
+    sem_fft  = sem(all_ffts)
+    freqs    = np.linspace(0,1./(2*spacing), len(mean_fft))
+
+    if frequencyFlag and semFlag:
+        return mean_fft, freqs, sem_fft
+    elif frequencyFlag:
+        return mean_fft, freqs
+    elif semFlag:
+        return mean_fft, sem_fft
+    else:
+        return mean_fft
+

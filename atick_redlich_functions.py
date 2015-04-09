@@ -78,11 +78,14 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         # interpolate horz and ama to get a unified space
         horz_interp = interp1d(space_h, horz_pf)
         ama_interp  = interp1d(space_a, ama_pf)
-        space       = np.linspace(np.max([np.min(space_h), np.min(space_a)]), np.min([np.max(space_h), np.max(space_a)]), 200)
+        space       = np.linspace(np.max([np.min(space_h), np.min(space_a)]), np.min([np.max(space_h), np.max(space_a)]), 50)
 
         # project interpolations on unified space
         horz_pf     = horz_interp(space)
         ama_pf      = ama_interp(space)
+
+        ## FOR DEBUGGING ##
+        return space, horz_pf, ama_pf
 
         # set sampling rate
         Fs   = space[-1] - space[-2]
@@ -100,13 +103,16 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
     if len(center.shape) > 1:
         center = center.squeeze()
     rf = center_weighting * center + surround_weighting * surround
-    
+
     # FFT of RF
     rf_f_two_sided = abs(np.fft.fftshift(np.fft.fft(rf)))
     rf_f_one_sided = rf_f_two_sided[len(rf_f_two_sided)/2:]
 
     rf_freqs_two_sided = np.fft.fftshift(np.fft.fftfreq(len(rf_f_two_sided),Fs))
     rf_freqs_one_sided = rf_freqs_two_sided[len(rf_freqs_two_sided)/2:]
+
+    #import pdb
+    #pdb.set_trace()
     
     
     ###### IDEAL ######
@@ -133,17 +139,14 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         idealFilter = unique_soln(spectra, inputNoise, outputNoise, verbose=verbose)
         
     if plotFlag == 'aggregate':
-        plt.plot(moreFreqs, idealFilter, 'r', linewidth=3, alpha=0.8)
-        plt.plot(rf_freqs_one_sided, rf_f_one_sided, 'k', linewidth=3, alpha=0.8)
+        plt.plot(moreFreqs, idealFilter/np.nanmax(idealFilter), 'r', linewidth=3, alpha=0.8)
+        plt.plot(rf_freqs_one_sided, rf_f_one_sided/np.nanmax(rf_f_one_sided), 'k', linewidth=3, alpha=0.8)
         if xlimit:
             plt.xlim(xlimit)
     elif plotFlag == 'separate':
-        horz_ffts = get_horizontal_projective_fft()
-        ama_ffts  = get_amacrine_projective_fft()
 
-        # for now just pick one
-        freq_h, horz_fft = horz_ffts[0]
-        freq_a, ama_fft  = ama_ffts[0]
+        freq_h, horz_fft = get_fft([(space, horz_pf)])[0]
+        freq_a, ama_fft  = get_fft([(space, ama_pf)])[0]
 
         flag = 'exp'
 
