@@ -26,13 +26,21 @@ def get_mean(data, interpolation='slinear', nPoints=200):
     '''
     max_x     = np.max([np.max(x) for x, y in data])
     min_x     = np.min([np.min(x) for x, y in data])
-    aligned_x = np.linspace(min_x, max_x, nPoints)
+    if nPoints:
+        aligned_x = np.linspace(min_x, max_x, nPoints)
+    else:
+        # otherwise just use the first x, which should be the same for all data
+        aligned_x = data[0][0]
     aligned_y = []
 
     for x, y in data:
-        # fill out of bounds with nans
-        y_interp = interp1d(x, y, kind=interpolation, bounds_error=False)
-        aligned_y.append(y_interp(aligned_x))
+        if interpolation:
+            # fill out of bounds with nans
+            y_interp = interp1d(x, y, kind=interpolation, bounds_error=False)
+            aligned_y.append(y_interp(aligned_x))
+        else:
+            aligned_y.append(y)
+            assert len(y) == len(aligned_x), 'x and y must have same length'
 
     mean_y = np.nanmean(np.vstack(aligned_y), axis=0)
     errors = sem(np.vstack(aligned_y), axis=0)
