@@ -77,7 +77,7 @@ def get_fft(data, mode='fourier'):
     return ffts
 
 
-def load_ganglion_cells(micronsPerDeg=50.):
+def load_ganglion_cells(micronsPerDeg=50., pca_mode='time'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -94,9 +94,14 @@ def load_ganglion_cells(micronsPerDeg=50.):
     spatial_rfs = []
     for n in range(nCells):
         pca = PCA(n_components=2)
-        pca.fit(data_gc[:,:,n])
+        if pca_mode == 'space':
+            pca.fit(data_gc[:,:,n])
+            g_pca = pca.components_[0]
+        elif pca_mode == 'time':
+            pca.fit(data_gc[:,:,n].T)
+            g_pca = np.dot(data_gc[:,:,n].T, pca.components_[0])
 
-        g_pca      = pca.components_[0]
+
         sign_of_pc = -1 * np.sign(g_pca[abs(g_pca) == np.max(abs(g_pca))])
         space      = get_space(g_pca, spatialDelta, micronsPerDeg)
 
