@@ -22,6 +22,32 @@ def get_space(rf, spatial_delta, microns_per_deg, scale=True):
         space /= microns_per_deg
     return space
 
+def get_interp(data, interpolation='slinear', nPoints=200):
+    '''Aligns and interpolates list of (x,y) data. 
+       Returns list of (aligned_x, aligned_y) tuples.
+    '''
+    interp_data = []
+
+    max_x     = np.max([np.max(x) for x, y in data])
+    min_x     = np.min([np.min(x) for x, y in data])
+    if nPoints:
+        aligned_x = np.linspace(min_x, max_x, nPoints)
+    else:
+        # otherwise just use the first x, which should be the same for all data
+        aligned_x = data[0][0]
+
+    for x, y in data:
+        if interpolation:
+            # fill out of bounds with nans
+            y_interp = interp1d(x, y, kind=interpolation, bounds_error=False)
+            interp_data.append((aligned_x, y_interp(aligned_x)))
+        else:
+            interp_data.append((aligned_x, y))
+            assert len(y) == len(aligned_x), 'x and y must have same length'
+
+    return interp_data
+
+
 def get_mean(data, interpolation='slinear', nPoints=200):
     '''Return (space, mean_rf, error) tuple. Input should be list of (x, y) tuples (e.g. (space, rf)).
     '''
