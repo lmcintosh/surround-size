@@ -4,7 +4,7 @@ from os.path import expanduser
 from scipy.interpolate import interp1d
 from scipy.stats import sem
 
-def get_space(rf, spatial_delta, microns_per_deg):
+def get_space(rf, spatial_delta, microns_per_deg, scale=True):
     '''Returns a spatial vector for each point in 1d vector rf,
     with zero degrees aligned to the max(abs(rf)).
     INPUT:
@@ -17,8 +17,9 @@ def get_space(rf, spatial_delta, microns_per_deg):
     '''
     peak  = np.argmax(abs(rf))
     space = np.linspace(-spatial_delta*peak, spatial_delta*(len(rf)-peak), len(rf))
-    space *= 1000 # mm to microns
-    space /= microns_per_deg
+    if scale:
+        space *= 1000 # mm to microns
+        space /= microns_per_deg
     return space
 
 def get_mean(data, interpolation='slinear', nPoints=200):
@@ -77,7 +78,7 @@ def get_fft(data, mode='fourier'):
     return ffts
 
 
-def load_ganglion_cells(micronsPerDeg=50., pca_mode='time'):
+def load_ganglion_cells(micronsPerDeg=50., pca_mode='space'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -210,7 +211,7 @@ def get_amacrine_projective_field(micronsPerDeg=50.):
         proj_field = np.convolve(proj_range, rf, mode='same')
         proj_field *= np.mean(rf) / np.mean(proj_field)
 
-        spatial_pfs.append((space, proj_field))
+        spatial_pfs.append((get_space(proj_field, space[1]-space[0], micronsPerDeg, scale=False), proj_field))
 
     return spatial_pfs
 
@@ -225,45 +226,23 @@ def get_horizontal_projective_field(micronsPerDeg=50.):
         proj_field = np.convolve(proj_range, rf, mode='same')
         proj_field *= np.mean(rf) / np.mean(proj_field)
 
-        spatial_pfs.append((space, proj_field))
+        spatial_pfs.append((get_space(proj_field, space[1]-space[0], micronsPerDeg, scale=False), proj_field))
 
     return spatial_pfs
 
 
-def get_amacrine_projective_fft(micronsPerDeg=50.):
+def get_amacrine_projective_fft(micronsPerDeg=50., fft_mode='amplitude'):
     '''Returns tuples of (frequencies, amplitude spectrum)
     for amacrine projective field.
     '''
     spatial_pfs = get_amacrine_projective_field(micronsPerDeg=micronsPerDeg)
-    spatial_fft = []
 
-    for space, pf in spatial_pfs:
-        pf_f_two_sided = abs(np.fft.fftshift(np.fft.fft(pf)))
-        pf_f_one_sided = pf_f_two_sided[len(pf_f_two_sided)/2:]
+    return get_fft(spatial_pfs, mode=fft_mode)
 
-        Fs = space[-1] - space[-2]
-        pf_freqs_two_sided = np.fft.fftshift(np.fft.fftfreq(len(pf_f_two_sided), Fs))
-        pf_freqs_one_sided = pf_freqs_two_sided[len(pf_freqs_two_sided)/2:]
-
-        spatial_fft.append((pf_freqs_one_sided, pf_f_one_sided))
-    
-    return spatial_fft
-
-def get_horizontal_projective_fft(micronsPerDeg=50.):
+def get_horizontal_projective_fft(micronsPerDeg=50., fft_mode='amplitude'):
     '''Returns tuples of (frequencies, amplitude spectrum)
     for horizontal projective field.
     '''
     spatial_pfs = get_horizontal_projective_field(micronsPerDeg=micronsPerDeg)
-    spatial_fft = []
 
-    for space, pf in spatial_pfs:
-        pf_f_two_sided = abs(np.fft.fftshift(np.fft.fft(pf)))
-        pf_f_one_sided = pf_f_two_sided[len(pf_f_two_sided)/2:]
-
-        Fs = space[-1] - space[-2]
-        pf_freqs_two_sided = np.fft.fftshift(np.fft.fftfreq(len(pf_f_two_sided), Fs))
-        pf_freqs_one_sided = pf_freqs_two_sided[len(pf_freqs_two_sided)/2:]
-
-        spatial_fft.append((pf_freqs_one_sided, pf_f_one_sided))
-    
-    return spatial_fft
+    return get_fft(spatial_pfs, mode=fft_mode)
