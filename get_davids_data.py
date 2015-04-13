@@ -22,14 +22,20 @@ def get_space(rf, spatial_delta, microns_per_deg, scale=True):
         space /= microns_per_deg
     return space
 
-def get_interp(data, interpolation='slinear', nPoints=200):
+def get_interp(data, interpolation='slinear', nPoints=200, mode='valid'):
     '''Aligns and interpolates list of (x,y) data. 
        Returns list of (aligned_x, aligned_y) tuples.
+       Mode can be 'valid' or 'full'.
     '''
     interp_data = []
 
-    max_x     = np.max([np.max(x) for x, y in data])
-    min_x     = np.min([np.min(x) for x, y in data])
+    if mode == 'full':
+        max_x = np.max([np.max(x) for x, y in data])
+        min_x = np.min([np.min(x) for x, y in data])
+    elif mode == 'valid':
+        max_x = np.min([np.max(x) for x, y in data])
+        min_x = np.max([np.min(x) for x, y in data])
+
     if nPoints:
         aligned_x = np.linspace(min_x, max_x, nPoints)
     else:
@@ -51,6 +57,12 @@ def get_interp(data, interpolation='slinear', nPoints=200):
 def get_mean(data, interpolation='slinear', nPoints=200):
     '''Return (space, mean_rf, error) tuple. Input should be list of (x, y) tuples (e.g. (space, rf)).
     '''
+    # you can't add points if you're not interpolating
+    if interpolation is None:
+        if nPoints:
+            print 'Warning: nPoints must be None as well.'
+            nPoints = None
+
     max_x     = np.max([np.max(x) for x, y in data])
     min_x     = np.min([np.min(x) for x, y in data])
     if nPoints:
