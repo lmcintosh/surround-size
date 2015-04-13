@@ -85,7 +85,7 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         ama_pf      = ama_interp(space)
 
         ## FOR DEBUGGING ##
-        return space, horz_pf, ama_pf
+        #return space, horz_pf, ama_pf
 
         # set sampling rate
         Fs   = space[-1] - space[-2]

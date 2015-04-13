@@ -54,7 +54,7 @@ def get_interp(data, interpolation='slinear', nPoints=200, mode='valid'):
     return interp_data
 
 
-def get_mean(data, interpolation='slinear', nPoints=200):
+def get_mean(data, interpolation='slinear', nPoints=200, mode='full'):
     '''Return (space, mean_rf, error) tuple. Input should be list of (x, y) tuples (e.g. (space, rf)).
     '''
     # you can't add points if you're not interpolating
@@ -63,23 +63,13 @@ def get_mean(data, interpolation='slinear', nPoints=200):
             print 'Warning: nPoints must be None as well.'
             nPoints = None
 
-    max_x     = np.max([np.max(x) for x, y in data])
-    min_x     = np.min([np.min(x) for x, y in data])
-    if nPoints:
-        aligned_x = np.linspace(min_x, max_x, nPoints)
-    else:
-        # otherwise just use the first x, which should be the same for all data
-        aligned_x = data[0][0]
-    aligned_y = []
-
-    for x, y in data:
-        if interpolation:
-            # fill out of bounds with nans
-            y_interp = interp1d(x, y, kind=interpolation, bounds_error=False)
-            aligned_y.append(y_interp(aligned_x))
-        else:
-            aligned_y.append(y)
-            assert len(y) == len(aligned_x), 'x and y must have same length'
+    # align and interpolate data
+    interp_data = get_interp(data, interpolation=interpolation, nPoints=nPoints, mode=mode)
+    aligned_y   = []
+    aligned_x   = interp_data[0][0]
+    for x,y in interp_data:
+        assert all(aligned_x == x), 'get_interp() should return all the same xs'
+        aligned_y.append(y)
 
     mean_y = np.nanmean(np.vstack(aligned_y), axis=0)
     errors = sem(np.vstack(aligned_y), axis=0)
