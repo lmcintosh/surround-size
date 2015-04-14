@@ -75,10 +75,10 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         space_h, horz_pf, horz_sem = get_mean(horz_pfs)
         space_a, ama_pf, ama_sem   = get_mean(ama_pfs)
 
-        # interpolate horz and ama to get a unified space
+        # interpolate horz and ama to get a unified space; mode='valid'
         horz_interp = interp1d(space_h, horz_pf)
         ama_interp  = interp1d(space_a, ama_pf)
-        space       = np.linspace(np.max([np.min(space_h), np.min(space_a)]), np.min([np.max(space_h), np.max(space_a)]), 50)
+        space       = np.linspace(np.max([np.min(space_h), np.min(space_a)]), np.min([np.max(space_h), np.max(space_a)]), 80)
 
         # project interpolations on unified space
         horz_pf     = horz_interp(space)
@@ -88,7 +88,7 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         #return space, horz_pf, ama_pf
 
         # set sampling rate
-        Fs   = space[-1] - space[-2]
+        spacing = space[-1] - space[-2]
     
     # make surround
     surround       = horz_weighting * horz_pf + ama_weighting * ama_pf
@@ -104,16 +104,15 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         center = center.squeeze()
     rf = center_weighting * center + surround_weighting * surround
 
-    # FFT of RF
-    rf_f_two_sided = abs(np.fft.fftshift(np.fft.fft(rf)))
-    rf_f_one_sided = rf_f_two_sided[len(rf_f_two_sided)/2:]
+    # Amplitude Spectrum of RF
+    rf_f_two_sided = abs(np.fft.fft(rf))
+    n = len(rf_f_two_sided)
+    if n % 2 == 0:
+        rf_f_one_sided = rf_f_two_sided[:n/2 + 1]
+    else:
+        rf_f_one_sided = rf_f_two_sided[:(n-1)/2 + 1]
+    rf_freqs_one_sided = np.linspace(0, 1./(2*spacing), len(rf_f_one_sided))
 
-    rf_freqs_two_sided = np.fft.fftshift(np.fft.fftfreq(len(rf_f_two_sided),Fs))
-    rf_freqs_one_sided = rf_freqs_two_sided[len(rf_freqs_two_sided)/2:]
-
-    #import pdb
-    #pdb.set_trace()
-    
     
     ###### IDEAL ######
     if interpolation == 'linear':
@@ -145,8 +144,8 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             plt.xlim(xlimit)
     elif plotFlag == 'separate':
 
-        freq_h, horz_fft = get_fft([(space, horz_pf)])[0]
-        freq_a, ama_fft  = get_fft([(space, ama_pf)])[0]
+        freq_h, horz_fft = get_fft([(space, horz_pf)], mode='amplitude')[0]
+        freq_a, ama_fft  = get_fft([(space, ama_pf)], mode='amplitude')[0]
 
         flag = 'exp'
 
@@ -155,8 +154,8 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             horz_interpolate = interp1d(freq_h, 1-horz_fft/np.max(horz_fft), kind='slinear')
             ama_interpolate  = interp1d(freq_a, 1-ama_fft/np.max(ama_fft), kind='slinear')
 
-            horz_interpolate_x = np.linspace(freq_h[0], freq_h[-1], len(moreFreqs))
-            ama_interpolate_x  = np.linspace(freq_a[0], freq_a[-1], len(moreFreqs))
+            horz_interpolate_x = np.linspace(freq_h[0], freq_h[-1], numPoints)
+            ama_interpolate_x  = np.linspace(freq_a[0], freq_a[-1], numPoints)
 
             horz_fit = horz_interpolate(horz_interpolate_x)
             ama_fit  = ama_interpolate(ama_interpolate_x)
@@ -175,8 +174,8 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             popt_horz, pcov_horz = curve_fit(func, freq_h, 1-horz_fft/np.max(horz_fft))
             popt_ama, pcov_ama   = curve_fit(func, freq_a, 1-ama_fft/np.max(ama_fft))
             
-            horz_interpolate_x = np.linspace(freq_h[0], freq_h[-1], len(moreFreqs))
-            ama_interpolate_x  = np.linspace(freq_a[0], freq_a[-1], len(moreFreqs))
+            horz_interpolate_x = np.linspace(freq_h[0], freq_h[-1], numPoints)
+            ama_interpolate_x  = np.linspace(freq_a[0], freq_a[-1], numPoints)
             
             horz_fit = func(horz_interpolate_x, *popt_horz)
             ama_fit  = func(ama_interpolate_x, *popt_ama)
