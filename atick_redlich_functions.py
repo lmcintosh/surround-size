@@ -51,7 +51,7 @@ def unique_soln(r0, inputNoise, outputNoise, verbose=True):
 def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space_a=None, proj_a=None, 
         inputNoise=0.1, outputNoise=0.4, center_weighting=2.1, surround_weighting=0.1,
         horz_weighting=0.5, ama_weighting=0.5, center_width=.5, interpolation='fit', 
-        numPoints=1000, returnFlag=False, plotFlag='aggregate', verbose=True, xlimit=None):
+        numPoints=1000, returnFlag=False, plotFlag='aggregate', verbose=True, xlimit=None, aggregateColor='c'):
     ''' Compare ideal infomax filter to experimental projective fields.
     INPUTS:
     frequencies: np array of spatial frequencies corresponding to spectra
@@ -76,9 +76,9 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         space_a, ama_pf, ama_sem   = get_mean(ama_pfs)
 
         # interpolate horz and ama to get a unified space; mode='valid'
-        horz_interp = interp1d(space_h, horz_pf)
-        ama_interp  = interp1d(space_a, ama_pf)
-        space       = np.linspace(np.max([np.min(space_h), np.min(space_a)]), np.min([np.max(space_h), np.max(space_a)]), 80)
+        horz_interp = interp1d(space_h, horz_pf, kind='slinear')
+        ama_interp  = interp1d(space_a, ama_pf, kind='slinear')
+        space       = np.linspace(np.max([np.min(space_h), np.min(space_a)]), np.min([np.max(space_h), np.max(space_a)]), 100)
 
         # project interpolations on unified space
         horz_pf     = horz_interp(space)
@@ -105,7 +105,7 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
     rf = center_weighting * center + surround_weighting * surround
 
     # Amplitude Spectrum of RF
-    rf_f_two_sided = abs(np.fft.fft(rf))
+    rf_f_two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
     n = len(rf_f_two_sided)
     if n % 2 == 0:
         rf_f_one_sided = rf_f_two_sided[:n/2 + 1]
@@ -138,8 +138,58 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         idealFilter = unique_soln(spectra, inputNoise, outputNoise, verbose=verbose)
         
     if plotFlag == 'aggregate':
-        plt.plot(moreFreqs, idealFilter/np.nanmax(idealFilter), 'r', linewidth=3, alpha=0.8)
-        plt.plot(rf_freqs_one_sided, rf_f_one_sided/np.nanmax(rf_f_one_sided), 'k', linewidth=3, alpha=0.8)
+        # first we need to compute the fft for all combinations of horz and amacrine cell
+        horz_pfs = get_horizontal_projective_field()
+        horz_pfs = get_interp(horz_pfs, mode='valid')
+        ama_pfs  = get_amacrine_projective_field()
+        ama_pfs  = get_interp(ama_pfs, mode='valid')
+
+        min_space = np.max([np.max([np.min(x) for x,y in horz_pfs]), np.max([np.min(x) for x,y in ama_pfs])])
+        max_space = np.min([np.min([np.max(x) for x,y in horz_pfs]), np.min([np.max(x) for x,y in ama_pfs])])
+        space     = np.linspace(min_space, max_space, 100)
+        rf_ffts   = []
+
+        for fh, hp in horz_pfs:
+            for ah, ap in ama_pfs:
+                horz_interp = interp1d(fh, hp, kind='slinear')
+                ama_interp  = interp1d(ah, ap, kind='slinear')
+
+                surround = horz_weighting * horz_interp(space) + ama_weighting * ama_interp(space)
+
+                # make center
+                if center_width is None:
+                    center = center_weighting * np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+                else:
+                    center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
+
+                # put them together
+                if len(center.shape) > 1:
+                    center = center.squeeze()
+                rf = center_weighting * center + surround_weighting * surround
+
+                # Amplitude Spectrum of RF
+                two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
+                n = len(two_sided)
+                if n % 2 == 0:
+                    rf_ffts.append(two_sided[:n/2 + 1])
+                else:
+                    rf_ffts.append(two_sided[:(n-1)/2 + 1])
+
+        rf_ffts_err = sem(rf_ffts)
+        scaling = np.nanmax(rf_f_one_sided)
+        scaling_err = np.nanmax(np.mean(rf_ffts, axis=0))
+
+        #for rf_fft in rf_ffts:
+        #    freqs_one_sided = np.linspace(0, 1./(2*(space[-1]-space[-2])), len(rf_fft))
+        #    plt.plot(freqs_one_sided, rf_fft/scaling_err, 'c', linewidth=2)
+
+        plt.plot(rf_freqs_one_sided, (rf_f_one_sided/scaling), aggregateColor, linewidth=9, alpha=0.8)
+        plt.errorbar(rf_freqs_one_sided, rf_f_one_sided/scaling, yerr=rf_ffts_err/scaling_err, color=aggregateColor, alpha=0.7, linewidth=9, capthick=5, capsize=5)
+        plt.plot(moreFreqs, (idealFilter/np.nanmax(idealFilter)), color='#6699ff', alpha=0.7, linewidth=9)
+        plt.tick_params(axis='y', direction='out')
+        plt.tick_params(axis='x', direction='out')
+        adjust_spines(plt.gca(), ['left', 'bottom'])
+        plt.ylim([0, 1.2])
         if xlimit:
             plt.xlim(xlimit)
     elif plotFlag == 'separate':
@@ -206,3 +256,24 @@ def spectrum_fit(frequencies, spectrum, num_points=5000):
     moreSpectra = func(moreFreqs, *popt)
 
     return (moreFreqs, moreSpectra)
+
+def adjust_spines(ax, spines):
+    for loc, spine in ax.spines.items():
+        if loc in spines:
+            spine.set_position(('outward', 10))  # outward by 10 points
+            spine.set_smart_bounds(True)
+        else:
+            spine.set_color('none')  # don't draw spine
+
+    # turn off ticks where there is no spine
+    if 'left' in spines:
+        ax.yaxis.set_ticks_position('left')
+    else:
+        # no yaxis ticks
+        ax.yaxis.set_ticks([])
+
+    if 'bottom' in spines:
+        ax.xaxis.set_ticks_position('bottom')
+    else:
+        # no xaxis ticks
+        ax.xaxis.set_ticks([])
