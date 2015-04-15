@@ -239,6 +239,17 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         if xlimit:
             plt.xlim(xlimit)
 
+    elif plotFlag == 'many':
+        input_noises  = [0.01, 0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
+        output_noises = [0.01, 0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
+        
+        for inn in input_noises:
+            for outn in output_noises:
+                freq_ideal, filt_ideal, freq_expt, filt_expt = compare_to_experiment(frequencies, spectra, 
+                                                                     inputNoise=inn, outputNoise=outn, verbose=False
+                                                                     returnFlag=True, numPoints=5000, plotFlag=False)
+
+
     
     if returnFlag:
         try:
