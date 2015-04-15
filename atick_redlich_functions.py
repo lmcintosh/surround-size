@@ -240,14 +240,23 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             plt.xlim(xlimit)
 
     elif plotFlag == 'many':
-        input_noises  = [0.01, 0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
-        output_noises = [0.01, 0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
+        input_noises  = [0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
+        output_noises = [0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
+        relevance_cutoff = 0.3
         
         for inn in input_noises:
             for outn in output_noises:
-                freq_ideal, filt_ideal, freq_expt, filt_expt = compare_to_experiment(frequencies, spectra, 
-                                                                     inputNoise=inn, outputNoise=outn, verbose=False
-                                                                     returnFlag=True, numPoints=5000, plotFlag=False)
+                freq_ideal, filt_ideal, _, _ = compare_to_experiment(frequencies, spectra, inputNoise=inn, outputNoise=outn, verbose=False, returnFlag=True, numPoints=5000, plotFlag=False)
+                fitted_rf = fit_ideal(freq_ideal[freq_ideal < relevance_cutoff], filt_ideal[freq_ideal < relevance_cutoff]/np.nanmax(filt_ideal[freq_ideal < relevance_cutoff]))
+                plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='#6699ff', linewidth=7, alpha=0.3)
+                plt.plot(freq_ideal[freq_ideal < relevance_cutoff], fitted_rf, 'c', linewidth=7, alpha=0.3)
+                
+        plt.tick_params(axis='y', direction='out')
+        plt.tick_params(axis='x', direction='out')
+        adjust_spines(plt.gca(), ['left', 'bottom'])
+        plt.ylim([0, 1.2])
+        if xlimit:
+            plt.xlim(xlimit)
 
 
     
@@ -288,3 +297,61 @@ def adjust_spines(ax, spines):
     else:
         # no xaxis ticks
         ax.xaxis.set_ticks([])
+
+
+def fit_ideal(freqs, amplitude):
+    '''Fit a linear combination of horizontal + amacrine + Gaussian center
+    to the amplitude spectrum of the ideal infomax filter'''
+
+    # Get original data
+    horz_pfs = get_horizontal_projective_field()
+    ama_pfs  = get_amacrine_projective_field()
+
+    # get means of the projective fields
+    space_h, horz_pf, horz_sem = get_mean(horz_pfs)
+    space_a, ama_pf, ama_sem   = get_mean(ama_pfs)
+
+    # interpolate horz and ama to get a unified space; mode='valid'
+    horz_interp = interp1d(space_h, horz_pf, kind='slinear')
+    ama_interp  = interp1d(space_a, ama_pf, kind='slinear')
+    space       = np.linspace(np.max([np.min(space_h), np.min(space_a)]), np.min([np.max(space_h), np.max(space_a)]), 100)
+
+    # project interpolations on unified space
+    horz_pf     = horz_interp(space)
+    ama_pf      = ama_interp(space)
+
+    # set sampling rate
+    spacing = space[-1] - space[-2]
+    
+    def rf_fft(freqs, horz_weighting, ama_weighting, center_weighting, surround_weighting, center_width):
+        # make surround
+        surround       = horz_weighting * horz_pf + ama_weighting * ama_pf
+
+        # make center
+        if center_width is None:
+            center = center_weighting * np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+        else:
+            center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
+
+        # put them together
+        if len(center.shape) > 1:
+            center = center.squeeze()
+        rf = center_weighting * center + surround_weighting * surround
+
+        # Amplitude Spectrum of RF
+        rf_f_two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
+        n = len(rf_f_two_sided)
+        if n % 2 == 0:
+            rf_f_one_sided = rf_f_two_sided[:n/2 + 1]
+        else:
+            rf_f_one_sided = rf_f_two_sided[:(n-1)/2 + 1]
+        rf_freqs_one_sided = np.linspace(0, 1./(2*spacing), len(rf_f_one_sided))
+
+        rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided)
+        return rf_interp(freqs)/np.nanmax(rf_interp(freqs))
+
+    # fit least-squares
+    popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[0.5, 0.75, 6., 0.45, 1.7])
+
+    return rf_fft(freqs, *popt)
+
