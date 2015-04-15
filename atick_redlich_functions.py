@@ -240,17 +240,87 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             plt.xlim(xlimit)
 
     elif plotFlag == 'many':
-        input_noises  = [0.1, 0.3] #[0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
-        output_noises = [0.1, 0.3] #[0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
-        relevance_cutoff = 0.25
+        #input_noises  = [0.1, 0.2, 0.3] #[0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
+        #output_noises = [0.05, 0.1, 0.2, 0.3] #[0.05, 0.1, 0.15, 0.3, 0.4, 0.6]
+        noises = [(0.05, 0.1), (0.12, 0.35), (0.08, 0.2), (0.2, 0.42)]
+        viewing_cutoff   = 0.25
         
-        for inn in input_noises:
-            for outn in output_noises:
-                freq_ideal, filt_ideal, _, _ = compare_to_experiment(frequencies, spectra, inputNoise=inn, outputNoise=outn, verbose=False, returnFlag=True, numPoints=5000, plotFlag=False)
-                fitted_rf = fit_ideal(freq_ideal[freq_ideal < relevance_cutoff], filt_ideal[freq_ideal < relevance_cutoff]/np.nanmax(filt_ideal[freq_ideal < relevance_cutoff]))
-                plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='#6699ff', linewidth=7, alpha=0.3)
-                plt.plot(freq_ideal[freq_ideal < relevance_cutoff], fitted_rf, 'c', linewidth=7, alpha=0.3)
-                
+        #for inn in input_noises:
+        #    for outn in output_noises:
+        for inn, outn in noises:
+            if inn < 0.06:
+                relevance_cutoff = 0.3
+            elif inn < .1:
+                relevance_cutoff = 0.22
+            elif inn < .2:
+                relevance_cutoff = 0.15
+            else:
+                relevance_cutoff = 0.12
+            freq_ideal, filt_ideal, _, _ = compare_to_experiment(frequencies, spectra, inputNoise=inn, outputNoise=outn, verbose=False, returnFlag=True, numPoints=5000, plotFlag=False)
+            fitted_rf, popt = fit_ideal(freq_ideal[freq_ideal < relevance_cutoff], filt_ideal[freq_ideal < relevance_cutoff]/np.nanmax(filt_ideal[freq_ideal < relevance_cutoff]), returnFlag='interp')
+            freqs = freq_ideal[freq_ideal < viewing_cutoff]
+            if outn == 0.35:
+                plt.plot(freqs, fitted_rf(freqs, *popt), 'c', linewidth=2, alpha=0.5)
+            else:
+                plt.plot(freqs, fitted_rf(freqs, *popt), 'k', linewidth=2, alpha=0.5)
+            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='#6699ff', linewidth=7, alpha=0.4)
+
+            # get errorbars
+            # first we need to compute the fft for all combinations of horz and amacrine cell
+            horz_pfs = get_horizontal_projective_field()
+            horz_pfs = get_interp(horz_pfs, mode='valid')
+            ama_pfs  = get_amacrine_projective_field()
+            ama_pfs  = get_interp(ama_pfs, mode='valid')
+
+            min_space = np.max([np.max([np.min(x) for x,y in horz_pfs]), np.max([np.min(x) for x,y in ama_pfs])])
+            max_space = np.min([np.min([np.max(x) for x,y in horz_pfs]), np.min([np.max(x) for x,y in ama_pfs])])
+            space     = np.linspace(min_space, max_space, 100)
+            rf_ffts   = []
+
+            horz_weighting, ama_weighting, center_weighting, surround_weighting, center_width = popt
+
+            for fh, hp in horz_pfs:
+                for ah, ap in ama_pfs:
+                    horz_interp = interp1d(fh, hp, kind='slinear')
+                    ama_interp  = interp1d(ah, ap, kind='slinear')
+
+                    surround = horz_weighting * horz_interp(space) + ama_weighting * ama_interp(space)
+
+                    # make center
+                    if center_width is None:
+                        center = center_weighting * np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+                    else:
+                        center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
+
+                    # put them together
+                    if len(center.shape) > 1:
+                        center = center.squeeze()
+                    rf = center_weighting * center + surround_weighting * surround
+
+                    # Amplitude Spectrum of RF
+                    two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
+                    n = len(two_sided)
+                    if n % 2 == 0:
+                        rf_ffts.append(two_sided[:n/2 + 1])
+                    else:
+                        rf_ffts.append(two_sided[:(n-1)/2 + 1])
+
+            rf_ffts_err = sem(rf_ffts)
+            scaling = np.nanmax(rf_f_one_sided)
+            scaling_err = np.nanmax(np.mean(rf_ffts, axis=0))
+            err_interp = interp1d(np.linspace(0, 1./(2.*(space[-1]-space[-2])), len(rf_ffts_err)), rf_ffts_err/scaling_err)
+
+            #for rf_fft in rf_ffts:
+            #    freqs_one_sided = np.linspace(0, 1./(2*(space[-1]-space[-2])), len(rf_fft))
+            #    plt.plot(freqs_one_sided, rf_fft/scaling_err, 'c', linewidth=2)
+
+            if outn == 0.35:
+                plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='c', alpha=0.5, linewidth=2, capthick=2, capsize=2)
+            else:
+                plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='k', alpha=0.5, linewidth=2, capthick=2, capsize=2)
+
+
+            
         plt.tick_params(axis='y', direction='out')
         plt.tick_params(axis='x', direction='out')
         adjust_spines(plt.gca(), ['left', 'bottom'])
@@ -299,7 +369,7 @@ def adjust_spines(ax, spines):
         ax.xaxis.set_ticks([])
 
 
-def fit_ideal(freqs, amplitude):
+def fit_ideal(freqs, amplitude, returnFlag='array'):
     '''Fit a linear combination of horizontal + amacrine + Gaussian center
     to the amplitude spectrum of the ideal infomax filter'''
 
@@ -353,5 +423,8 @@ def fit_ideal(freqs, amplitude):
     # fit least-squares
     popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[0.5, 0.75, 6., 0.45, 1.7])
 
-    return rf_fft(freqs, *popt)
+    if returnFlag == 'array':
+        return rf_fft(freqs, *popt)
+    if returnFlag == 'interp':
+        return rf_fft, popt
 
