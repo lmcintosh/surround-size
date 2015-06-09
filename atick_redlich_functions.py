@@ -51,7 +51,7 @@ def unique_soln(r0, inputNoise, outputNoise, verbose=True):
 def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space_a=None, proj_a=None, 
         inputNoise=0.1, outputNoise=0.4, center_weighting=2.1, surround_weighting=0.1,
         horz_weighting=0.5, ama_weighting=0.5, center_width=.5, interpolation='fit', 
-        numPoints=1000, returnFlag=False, plotFlag='aggregate', verbose=True, xlimit=None, aggregateColor='c'):
+        numPoints=1000, returnFlag=False, plotFlag='aggregate', verbose=True, xlimit=None, aggregateColor='c', statistics=False):
     ''' Compare ideal infomax filter to experimental projective fields.
     INPUTS:
     frequencies: np array of spatial frequencies corresponding to spectra
@@ -175,6 +175,7 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
                 else:
                     rf_ffts.append(two_sided[:(n-1)/2 + 1])
 
+        rf_fft_f    = np.linspace(0, 1./(2.*(space[-1]-space[-2])), len(rf_ffts[0]))
         rf_ffts_err = sem(rf_ffts)
         scaling = np.nanmax(rf_f_one_sided)
         scaling_err = np.nanmax(np.mean(rf_ffts, axis=0))
@@ -260,10 +261,10 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             fitted_rf, popt = fit_ideal(freq_ideal[freq_ideal < relevance_cutoff], filt_ideal[freq_ideal < relevance_cutoff]/np.nanmax(filt_ideal[freq_ideal < relevance_cutoff]), returnFlag='interp')
             freqs = freq_ideal[freq_ideal < viewing_cutoff]
             if outn == 0.35:
-                plt.plot(freqs, fitted_rf(freqs, *popt), 'c', linewidth=2, alpha=0.5)
+                plt.plot(freqs, fitted_rf(freqs, *popt), 'c', linewidth=5, alpha=0.5)
             else:
-                plt.plot(freqs, fitted_rf(freqs, *popt), 'k', linewidth=2, alpha=0.5)
-            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='#6699ff', linewidth=7, alpha=0.4)
+                plt.plot(freqs, fitted_rf(freqs, *popt), 'k', linewidth=5, alpha=0.3)
+            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='#6699ff', linewidth=11, alpha=0.5)
 
             # get errorbars
             # first we need to compute the fft for all combinations of horz and amacrine cell
@@ -315,9 +316,9 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             #    plt.plot(freqs_one_sided, rf_fft/scaling_err, 'c', linewidth=2)
 
             if outn == 0.35:
-                plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='c', alpha=0.5, linewidth=2, capthick=2, capsize=2)
+                plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='c', alpha=0.5, linewidth=5, capthick=4, capsize=2)
             else:
-                plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='k', alpha=0.5, linewidth=2, capthick=2, capsize=2)
+                plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='k', alpha=0.5, linewidth=5, capthick=4, capsize=2)
 
 
             
@@ -328,7 +329,227 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         if xlimit:
             plt.xlim(xlimit)
 
+    elif plotFlag == 'many-one':
 
+
+        noises = [(0.05, 0.1), (0.12, 0.35), (0.08, 0.2), (0.2, 0.42)]
+        viewing_cutoff   = 0.25
+        
+        #for inn in input_noises:
+        #    for outn in output_noises:
+        for inn, outn in noises:
+            if inn < 0.06:
+                relevance_cutoff = 0.3
+            elif inn < .1:
+                relevance_cutoff = 0.22
+            elif inn < .2:
+                relevance_cutoff = 0.15
+            else:
+                relevance_cutoff = 0.12
+            freq_ideal, filt_ideal, _, _ = compare_to_experiment(frequencies, spectra, inputNoise=inn, outputNoise=outn, verbose=False, returnFlag=True, numPoints=5000, plotFlag=False)
+            fitted_rf, popt = fit_ideal(freq_ideal[freq_ideal < relevance_cutoff], filt_ideal[freq_ideal < relevance_cutoff]/np.nanmax(filt_ideal[freq_ideal < relevance_cutoff]), returnFlag='interp')
+            freqs = freq_ideal[freq_ideal < viewing_cutoff]
+            #if outn == 0.35:
+                #plt.plot(freqs, fitted_rf(freqs, *popt), 'c', linewidth=5, alpha=0.5)
+            #else:
+                #plt.plot(freqs, fitted_rf(freqs, *popt), 'k', linewidth=5, alpha=0.3)
+            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='#6699ff', linewidth=11, alpha=0.5)
+
+            # get errorbars
+            # first we need to compute the fft for all combinations of horz and amacrine cell
+            horz_pfs = get_horizontal_projective_field()
+            horz_pfs = get_interp(horz_pfs, mode='valid')
+            ama_pfs  = get_amacrine_projective_field()
+            ama_pfs  = get_interp(ama_pfs, mode='valid')
+
+            min_space = np.max([np.max([np.min(x) for x,y in horz_pfs]), np.max([np.min(x) for x,y in ama_pfs])])
+            max_space = np.min([np.min([np.max(x) for x,y in horz_pfs]), np.min([np.max(x) for x,y in ama_pfs])])
+            space     = np.linspace(min_space, max_space, 100)
+            rf_ffts   = []
+
+            horz_weighting, ama_weighting, center_weighting, surround_weighting, center_width = popt
+
+            for fh, hp in horz_pfs:
+                for ah, ap in ama_pfs:
+                    horz_interp = interp1d(fh, hp, kind='slinear')
+                    ama_interp  = interp1d(ah, ap, kind='slinear')
+
+                    surround = horz_weighting * horz_interp(space) + ama_weighting * ama_interp(space)
+
+                    # make center
+                    if center_width is None:
+                        center = center_weighting * np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+                    else:
+                        center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
+
+                    # put them together
+                    if len(center.shape) > 1:
+                        center = center.squeeze()
+                    rf = center_weighting * center + surround_weighting * surround
+
+                    # Amplitude Spectrum of RF
+                    two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
+                    n = len(two_sided)
+                    if n % 2 == 0:
+                        rf_ffts.append(two_sided[:n/2 + 1])
+                    else:
+                        rf_ffts.append(two_sided[:(n-1)/2 + 1])
+
+            rf_ffts_err = sem(rf_ffts)
+            scaling = np.nanmax(rf_f_one_sided)
+            scaling_err = np.nanmax(np.mean(rf_ffts, axis=0))
+            err_interp = interp1d(np.linspace(0, 1./(2.*(space[-1]-space[-2])), len(rf_ffts_err)), rf_ffts_err/scaling_err)
+
+            #for rf_fft in rf_ffts:
+            #    freqs_one_sided = np.linspace(0, 1./(2*(space[-1]-space[-2])), len(rf_fft))
+            #    plt.plot(freqs_one_sided, rf_fft/scaling_err, 'c', linewidth=2)
+
+            #if outn == 0.35:
+                #plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='c', alpha=0.5, linewidth=5, capthick=4, capsize=2)
+            #else:
+                #plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='k', alpha=0.5, linewidth=5, capthick=4, capsize=2)
+
+
+            
+        plt.tick_params(axis='y', direction='out')
+        plt.tick_params(axis='x', direction='out')
+        adjust_spines(plt.gca(), ['left', 'bottom'])
+        plt.ylim([0, 1.2])
+        if xlimit:
+            plt.xlim(xlimit)
+
+    
+    elif plotFlag == 'horizontalOnly':
+        viewing_cutoff   = 0.25
+        relevance_start  = 0.03
+        relevance_cutoff = 0.35
+        
+        freq_ideal, filt_ideal, _, _ = compare_to_experiment(frequencies, spectra, inputNoise=inputNoise, outputNoise=outputNoise, verbose=False, returnFlag=True, numPoints=5000, plotFlag=False)
+
+        mask = (freq_ideal <= relevance_cutoff) & (freq_ideal >= relevance_start)
+        fitted_rf, popt = fit_ideal_horz_only(freq_ideal[mask], filt_ideal[mask]/np.nanmax(filt_ideal[mask]), returnFlag='interp')
+        freqs = freq_ideal[freq_ideal < viewing_cutoff]
+        plt.plot(freqs, fitted_rf(freqs, *popt), 'g', linewidth=9, alpha=0.8)
+        plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='#6699ff', linewidth=9, alpha=0.8)
+
+        # get errorbars
+        # first we need to compute the fft for all combinations of horz and amacrine cell
+        horz_pfs = get_horizontal_projective_field()
+        horz_pfs = get_interp(horz_pfs, mode='valid')
+
+        min_space = np.max([np.min(x) for x,y in horz_pfs])
+        max_space = np.min([np.max(x) for x,y in horz_pfs])
+        space     = np.linspace(min_space, max_space, 100)
+        rf_ffts   = []
+
+        center_weighting, surround_weighting, center_width = popt
+
+        for fh, hp in horz_pfs:
+            horz_interp = interp1d(fh, hp, kind='slinear')
+            surround = horz_interp(space)
+
+            # make center
+            if center_width is None:
+                center = np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+            else:
+                center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
+
+            # put them together
+            if len(center.shape) > 1:
+                center = center.squeeze()
+            rf = center_weighting * center + surround_weighting * surround
+
+            # Amplitude Spectrum of RF
+            two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
+            n = len(two_sided)
+            if n % 2 == 0:
+                rf_ffts.append(two_sided[:n/2 + 1])
+            else:
+                rf_ffts.append(two_sided[:(n-1)/2 + 1])
+
+        rf_ffts_err = sem(rf_ffts)
+        scaling = np.nanmax(rf_f_one_sided)
+        scaling_err = np.nanmax(np.mean(rf_ffts, axis=0))
+        err_interp = interp1d(np.linspace(0, 1./(2.*(space[-1]-space[-2])), len(rf_ffts_err)), rf_ffts_err/scaling_err)
+
+        plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='g', alpha=0.7, linewidth=9, capthick=5, capsize=5)
+            
+        plt.tick_params(axis='y', direction='out')
+        plt.tick_params(axis='x', direction='out')
+        adjust_spines(plt.gca(), ['left', 'bottom'])
+        plt.ylim([0, 1.2])
+        if xlimit:
+            plt.xlim(xlimit)
+        
+
+    elif plotFlag == 'amacrineOnly':
+        viewing_cutoff   = 0.25
+        relevance_start  = 0.00
+        relevance_cutoff = 0.3
+        
+        freq_ideal, filt_ideal, _, _ = compare_to_experiment(frequencies, spectra, inputNoise=inputNoise, outputNoise=outputNoise, verbose=False, returnFlag=True, numPoints=5000, plotFlag=False)
+
+        mask = (freq_ideal <= relevance_cutoff) & (freq_ideal >= relevance_start)
+        fitted_rf, popt = fit_ideal_ama_only(freq_ideal[mask], filt_ideal[mask]/np.nanmax(filt_ideal[mask]), returnFlag='interp')
+        freqs = freq_ideal[freq_ideal < viewing_cutoff]
+        plt.plot(freqs, fitted_rf(freqs, *popt), 'b', linewidth=9, alpha=0.8)
+        plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='#6699ff', linewidth=9, alpha=0.8)
+
+        # get errorbars
+        # first we need to compute the fft for all combinations of horz and amacrine cell
+        ama_pfs = get_amacrine_projective_field()
+        ama_pfs = get_interp(ama_pfs, mode='valid')
+
+        min_space = np.max([np.min(x) for x,y in ama_pfs])
+        max_space = np.min([np.max(x) for x,y in ama_pfs])
+        space     = np.linspace(min_space, max_space, 100)
+        rf_ffts   = []
+
+        center_weighting, surround_weighting, center_width = popt
+
+        for fa, ap in ama_pfs:
+            ama_interp = interp1d(fa, ap, kind='slinear')
+            surround = ama_interp(space)
+
+            # make center
+            if center_width is None:
+                center = np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+            else:
+                center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
+
+            # put them together
+            if len(center.shape) > 1:
+                center = center.squeeze()
+            rf = center_weighting * center + surround_weighting * surround
+
+            # Amplitude Spectrum of RF
+            two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
+            n = len(two_sided)
+            if n % 2 == 0:
+                rf_ffts.append(two_sided[:n/2 + 1])
+            else:
+                rf_ffts.append(two_sided[:(n-1)/2 + 1])
+
+        rf_ffts_err = sem(rf_ffts)
+        scaling = np.nanmax(rf_f_one_sided)
+        scaling_err = np.nanmax(np.mean(rf_ffts, axis=0))
+        err_interp = interp1d(np.linspace(0, 1./(2.*(space[-1]-space[-2])), len(rf_ffts_err)), rf_ffts_err/scaling_err)
+
+        plt.errorbar(freqs, fitted_rf(freqs, *popt), yerr=err_interp(freqs), color='b', alpha=0.7, linewidth=9, capthick=5, capsize=5)
+            
+        plt.tick_params(axis='y', direction='out')
+        plt.tick_params(axis='x', direction='out')
+        adjust_spines(plt.gca(), ['left', 'bottom'])
+        plt.ylim([0, 1.2])
+        if xlimit:
+            plt.xlim(xlimit)
+
+
+
+
+
+    if statistics:
+        return moreFreqs, idealFilter, rf_freqs_one_sided, rf_f_one_sided, rf_fft_f, rf_ffts
     
     if returnFlag:
         try:
@@ -371,7 +592,13 @@ def adjust_spines(ax, spines):
 
 def fit_ideal(freqs, amplitude, returnFlag='array'):
     '''Fit a linear combination of horizontal + amacrine + Gaussian center
-    to the amplitude spectrum of the ideal infomax filter'''
+    to the amplitude spectrum of the ideal infomax filter.
+    
+    if returnFlag='array',
+        OUTPUT: matching amplitude spectrum
+    elif returnFlag='interp',
+        OUTPUT: interp_function, popt
+    '''
 
     # Get original data
     horz_pfs = get_horizontal_projective_field()
@@ -399,7 +626,7 @@ def fit_ideal(freqs, amplitude, returnFlag='array'):
 
         # make center
         if center_width is None:
-            center = center_weighting * np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+            center = np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
         else:
             center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
 
@@ -428,3 +655,150 @@ def fit_ideal(freqs, amplitude, returnFlag='array'):
     if returnFlag == 'interp':
         return rf_fft, popt
 
+def fit_ideal_horz_only(freqs, amplitude, returnFlag='array'):
+    '''Fit a linear combination of horizontal + amacrine + Gaussian center
+    to the amplitude spectrum of the ideal infomax filter'''
+
+    # Get original data
+    horz_pfs = get_horizontal_projective_field()
+
+    # get means of the projective fields
+    space_h, horz_pf, horz_sem = get_mean(horz_pfs)
+
+    # interpolate horz and ama to get a unified space; mode='valid'
+    horz_interp = interp1d(space_h, horz_pf, kind='slinear')
+    space       = np.linspace(np.min(space_h), np.max(space_h), 100)
+
+    # project interpolations on unified space
+    horz_pf     = horz_interp(space)
+
+    # set sampling rate
+    spacing = space[-1] - space[-2]
+    
+    def rf_fft(freqs, center_weighting, surround_weighting, center_width):
+        # make surround
+        surround       = horz_pf
+
+        # make center
+        if center_width is None:
+            center = np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+        else:
+            center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
+
+        # put them together
+        if len(center.shape) > 1:
+            center = center.squeeze()
+        rf = center_weighting * center + surround_weighting * surround
+
+        # Amplitude Spectrum of RF
+        rf_f_two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
+        n = len(rf_f_two_sided)
+        if n % 2 == 0:
+            rf_f_one_sided = rf_f_two_sided[:n/2 + 1]
+        else:
+            rf_f_one_sided = rf_f_two_sided[:(n-1)/2 + 1]
+        rf_freqs_one_sided = np.linspace(0, 1./(2*spacing), len(rf_f_one_sided))
+
+        rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided)
+        return rf_interp(freqs)/np.nanmax(rf_interp(freqs))
+
+    # fit least-squares
+    popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[6., 0.45, 1.7])
+
+    if returnFlag == 'array':
+        return rf_fft(freqs, *popt)
+    if returnFlag == 'interp':
+        return rf_fft, popt
+
+def fit_ideal_ama_only(freqs, amplitude, returnFlag='array'):
+    '''Fit a linear combination of horizontal + amacrine + Gaussian center
+    to the amplitude spectrum of the ideal infomax filter'''
+
+    # Get original data
+    ama_pfs = get_amacrine_projective_field()
+
+    # get means of the projective fields
+    space_a, ama_pf, ama_sem = get_mean(ama_pfs)
+
+    # interpolate horz and ama to get a unified space; mode='valid'
+    ama_interp = interp1d(space_a, ama_pf, kind='slinear')
+    space      = np.linspace(np.min(space_a), np.max(space_a), 100)
+
+    # project interpolations on unified space
+    ama_pf     = ama_interp(space)
+
+    # set sampling rate
+    spacing = space[-1] - space[-2]
+    
+    def rf_fft(freqs, center_weighting, surround_weighting, center_width):
+        # make surround
+        surround       = ama_pf
+
+        # make center
+        if center_width is None:
+            center = np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
+        else:
+            center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
+
+        # put them together
+        if len(center.shape) > 1:
+            center = center.squeeze()
+        rf = center_weighting * center + surround_weighting * surround
+
+        # Amplitude Spectrum of RF
+        rf_f_two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
+        n = len(rf_f_two_sided)
+        if n % 2 == 0:
+            rf_f_one_sided = rf_f_two_sided[:n/2 + 1]
+        else:
+            rf_f_one_sided = rf_f_two_sided[:(n-1)/2 + 1]
+        rf_freqs_one_sided = np.linspace(0, 1./(2*spacing), len(rf_f_one_sided))
+
+        rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided)
+        return rf_interp(freqs)/np.nanmax(rf_interp(freqs))
+
+    # fit least-squares
+    popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[6., 0.45, 1.7])
+
+    if returnFlag == 'array':
+        return rf_fft(freqs, *popt)
+    if returnFlag == 'interp':
+        return rf_fft, popt
+
+
+def fig5_each_cell(frequencies, spectra):
+    ''' Generates Figure 5 with an infomax fit per ganglion cell.
+    Steps:
+    1) Get FFT of receptive field for each ganglion cell
+    2) Fit each ganglion RF FFT to an ideal infomax curve, varying input + output noise
+    3) Fit FFT of a linear combination of Ama., Horz., and Center. to the ideal infomax curve
+    4) Plot all of the ideal infomax power spectra and the ffts of the models together
+    
+    INPUTS:
+    frequencies: np array of spatial frequencies corresponding to spectra
+    spectra: np array of original power spectra
+    space_h: space in degrees corresponding to horizontal cell projective field
+    proj_h: horizontal cell projective field
+    space_a: space in degrees corresponding to amacrine cell projective field
+    proj_a: amacrine cell projective field
+    
+    RETURNS:
+    frequencies_ideal, ideal_filter, frequencies_expt, expt_filter
+    '''
+
+    ###### GET FFT OF GANGLION RFS #######
+    ganglion_rfs  = load_ganglion_cells(micronsPerDeg=50., pca_mode='space')
+    ganglion_ffts = get_fft(ganglion_rfs, mode='amplitude')
+
+    for spatial_freq, ganglion_amp_spect in ganglion_ffts:
+        # get the input and output noise corresponding to the matching ideal condition
+        input_noise, output_noise = corresponding_ideal(frequencies, spectra, spatial_freq, ganglion_amp_spect, noise)
+        
+        # get the ideal filter
+        freq_ideal, filt_ideal, _, _ = compare_to_experiment(frequencies, spectra, inputNoise=input_noise,
+                outputNoise=output_noise)
+
+        filt_model = fit_ideal(freq_ideal, filt_ideal, returnFlag='array')
+
+        plot(freq_ideal, filt_ideal, 'c', alpha=0.7)
+        plot(freq_ideal, filt_model, 'b', alpha=0.7)
