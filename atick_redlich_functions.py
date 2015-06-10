@@ -792,9 +792,9 @@ def corresponding_ideal(frequencies, spectrum, expt_freq, expt_amplitude_spectru
         
         signal_interp = interp1d(frequencies, spectrum, kind='slinear')
         signal_pwr    = signal_interp(expt_freq)
-        ideal_filt    = unique_soln(signal_pwr, input_noise, output_noise, verbose=True)
+        ideal_filt    = unique_soln(signal_pwr, input_noise, output_noise, verbose=False)
 
-        return (ideal_filt - expt_amplitude_spectrum)**2
+        return np.mean((ideal_filt - expt_amplitude_spectrum)**2)
 
 
     def constraint(noises):
@@ -805,14 +805,15 @@ def corresponding_ideal(frequencies, spectrum, expt_freq, expt_amplitude_spectru
 
 
     # minimize the difference between the ideal filter and the ganglion cell spectrum
-    res = minimize(fun=objective, x0=[0.1, 0.4], constraints={'type':'eq', 'fun':constraint}, disp=True)
+    res = minimize(fun=objective, x0=np.array([0.1, 0.4]), method='L-BFGS-B')
+#            constraints={'type':'eq', 'fun':constraint}, options={'disp':True})
 
     return res.x
 
 
 
 
-def fig5_each_cell(frequencies, spectra):
+def fig5_each_cell(frequencies, spectra, snr):
     ''' Generates Figure 5 with an infomax fit per ganglion cell.
     Steps:
     1) Get FFT of receptive field for each ganglion cell
@@ -835,13 +836,21 @@ def fig5_each_cell(frequencies, spectra):
     for spatial_freq, ganglion_amp_spect in ganglion_ffts:
         # get the input and output noise corresponding to the matching ideal condition
         input_noise, output_noise = corresponding_ideal(frequencies, spectra, spatial_freq, ganglion_amp_spect, snr)
+
+        print (input_noise, output_noise)
         
         # get the ideal filter
-        freq_ideal, filt_ideal, _, _ = compare_to_experiment(frequencies, spectra, inputNoise=input_noise,
-                outputNoise=output_noise)
+        freq_ideal, filt_ideal, tmp1, tmp2 = compare_to_experiment(frequencies, spectra, 
+                inputNoise=abs(input_noise), outputNoise=abs(output_noise), returnFlag=True, plotFlag=False)
 
-        filt_model = fit_ideal(freq_ideal, filt_ideal, returnFlag='array')
+        model_freqs     = np.linspace(np.max([np.min(freq_ideal), np.min(spatial_freq)]),
+                np.min([np.max(freq_ideal), np.max(spatial_freq)]), len(freq_ideal))
+        ideal_interp    = interp1d(freq_ideal, filt_ideal, kind='slinear')
+        resampled_ideal = ideal_interp(model_freqs)
 
-        plot(freq_ideal, filt_ideal, 'c', alpha=0.7)
-        plot(freq_ideal, filt_model, 'b', alpha=0.7)
-        plot(spatial_freq, ganglion_amp_spect, 'k', alpha=0.7)
+        filt_model = fit_ideal(model_freqs, resampled_ideal, returnFlag='array')
+
+        plt.plot(freq_ideal, filt_ideal, 'c', alpha=0.7)
+        plt.plot(model_freqs, filt_model, 'b', alpha=0.7)
+        plt.plot(spatial_freq, ganglion_amp_spect, 'k', alpha=0.7)
+        plt.xlim([0,1])
