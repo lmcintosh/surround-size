@@ -765,6 +765,52 @@ def fit_ideal_ama_only(freqs, amplitude, returnFlag='array'):
     if returnFlag == 'interp':
         return rf_fft, popt
 
+def get_snr(input_noise, output_noise, signal_spectrum, filter_spectrum):
+    ''' Returns the SNR as a function of the standard deviation of input and 
+    output noise, and the signal amplitude spectrum.
+
+    Note: amplitude spectra must be normalized by 1/len(x) so that spectra[0]
+    is the mean of x.
+    
+    SNR is (Signal Variance)/(Noise Variance). We can compute this from
+    the amplitude spectra because Var(X) = 2*integral(power spectrum).
+    '''
+    signal_var = 2.0*np.sum(signal_spectrum[1:]**2)
+    noise_var  = input_noise**2 * (2*np.sum(filter_spectrum) - filter_spectrum[0]) + output_noise**2
+
+    return signal_var / noise_var
+
+
+def corresponding_ideal(frequencies, spectrum, expt_freq, expt_amplitude_spectrum, snr):
+    '''Takes the power spectra of the signal and the amplitude spectrum of a ganglion cell,
+    and returns the input and output noise for the best match ideal filter.
+
+    Returns the std of the input and output noises.
+    '''
+    def objective(noises):
+        input_noise, output_noise = noises
+        
+        signal_interp = interp1d(frequencies, spectrum, kind='slinear')
+        signal_pwr    = signal_interp(expt_freq)
+        ideal_filt    = unique_soln(signal_pwr, input_noise, output_noise, verbose=True)
+
+        return (ideal_filt - expt_amplitude_spectrum)**2
+
+
+    def constraint(noises):
+        input_noise, output_noise = noises
+
+        # SNR is a function of input and output noise stds, signal_spect, filter_spect
+        return (snr - get_snr(input_noise, output_noise, spectrum, expt_amplitude_spectrum))**2
+
+
+    # minimize the difference between the ideal filter and the ganglion cell spectrum
+    res = minimize(fun=objective, x0=[0.1, 0.4], constraints={'type':'eq', 'fun':constraint}, disp=True)
+
+    return res.x
+
+
+
 
 def fig5_each_cell(frequencies, spectra):
     ''' Generates Figure 5 with an infomax fit per ganglion cell.
@@ -777,10 +823,6 @@ def fig5_each_cell(frequencies, spectra):
     INPUTS:
     frequencies: np array of spatial frequencies corresponding to spectra
     spectra: np array of original power spectra
-    space_h: space in degrees corresponding to horizontal cell projective field
-    proj_h: horizontal cell projective field
-    space_a: space in degrees corresponding to amacrine cell projective field
-    proj_a: amacrine cell projective field
     
     RETURNS:
     frequencies_ideal, ideal_filter, frequencies_expt, expt_filter
@@ -792,7 +834,7 @@ def fig5_each_cell(frequencies, spectra):
 
     for spatial_freq, ganglion_amp_spect in ganglion_ffts:
         # get the input and output noise corresponding to the matching ideal condition
-        input_noise, output_noise = corresponding_ideal(frequencies, spectra, spatial_freq, ganglion_amp_spect, noise)
+        input_noise, output_noise = corresponding_ideal(frequencies, spectra, spatial_freq, ganglion_amp_spect, snr)
         
         # get the ideal filter
         freq_ideal, filt_ideal, _, _ = compare_to_experiment(frequencies, spectra, inputNoise=input_noise,
@@ -802,3 +844,4 @@ def fig5_each_cell(frequencies, spectra):
 
         plot(freq_ideal, filt_ideal, 'c', alpha=0.7)
         plot(freq_ideal, filt_model, 'b', alpha=0.7)
+        plot(spatial_freq, ganglion_amp_spect, 'k', alpha=0.7)
