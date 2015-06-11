@@ -848,9 +848,13 @@ def fig5_each_cell(frequencies, spectra, snr):
         ideal_interp    = interp1d(freq_ideal, filt_ideal, kind='slinear')
         resampled_ideal = ideal_interp(model_freqs)
 
-        filt_model = fit_ideal(model_freqs, resampled_ideal, returnFlag='array')
+        filt_model = fit_ideal(model_freqs, resampled_ideal/np.nanmax(resampled_ideal), returnFlag='array')
 
-        plt.plot(freq_ideal, filt_ideal, 'c', alpha=0.7)
+        plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), 'c', alpha=0.7)
         plt.plot(model_freqs, filt_model, 'b', alpha=0.7)
-        plt.plot(spatial_freq, ganglion_amp_spect, 'k', alpha=0.7)
+        plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), 'k', alpha=0.7)
+        plt.tick_params(axis='y', direction='out')
+        plt.tick_params(axis='x', direction='out')
+        adjust_spines(plt.gca(), ['left', 'bottom'])
         plt.xlim([0,1])
+        plt.ylim([0,1.1])
