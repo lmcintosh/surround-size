@@ -850,9 +850,14 @@ def fig5_each_cell(frequencies, spectra, snr):
 
         filt_model = fit_ideal(model_freqs, resampled_ideal/np.nanmax(resampled_ideal), returnFlag='array')
 
-        plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), 'c', alpha=0.7)
-        plt.plot(model_freqs, filt_model, 'b', alpha=0.7)
-        plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), 'k', alpha=0.7)
+        r            = lambda: np.random.randint(0,255)
+        random_color = '#%02X%02X%02X' % (r(),r(),r())
+        plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color=random_color, alpha=0.7,
+                linestyle='.', marker='o')
+        plt.plot(model_freqs, filt_model, color=random_color, alpha=0.7, linestyle='--',
+                marker='')
+        plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), color=random_color, 
+                alpha=0.5, linewidth=2)
         plt.tick_params(axis='y', direction='out')
         plt.tick_params(axis='x', direction='out')
         adjust_spines(plt.gca(), ['left', 'bottom'])
