@@ -232,10 +232,10 @@ def load_horizontal_cells(micronsPerDeg=50.):
 def get_amacrine_projective_field(micronsPerDeg=50.):
     spatial_rfs = load_amacrine_cells(micronsPerDeg=micronsPerDeg)
     spatial_pfs = []
-    time_const  = 78./22.
+    space_const  = 78./22.
 
     for space, rf in spatial_rfs:
-        proj_range = [np.exp(-abs(t)/time_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
+        proj_range = [np.exp(-abs(t)/space_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
         proj_field = np.convolve(proj_range, rf, mode='same')
         proj_field *= np.mean(rf) / np.mean(proj_field)
 
@@ -247,10 +247,10 @@ def get_amacrine_projective_field(micronsPerDeg=50.):
 def get_horizontal_projective_field(micronsPerDeg=50.):
     spatial_rfs = load_horizontal_cells(micronsPerDeg=micronsPerDeg)
     spatial_pfs = []
-    time_const  = 118./22.
+    space_const  = 118./22.
 
     for space, rf in spatial_rfs:
-        proj_range = [np.exp(-abs(t)/time_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
+        proj_range = [np.exp(-abs(t)/space_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
         proj_field = np.convolve(proj_range, rf, mode='same')
         proj_field *= np.mean(rf) / np.mean(proj_field)
 

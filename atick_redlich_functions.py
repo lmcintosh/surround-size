@@ -813,7 +813,7 @@ def corresponding_ideal(frequencies, spectrum, expt_freq, expt_amplitude_spectru
 
 
 
-def fig5_each_cell(frequencies, spectra, snr):
+def fig5_each_cell(frequencies, spectra, snr, plot_style='same'):
     ''' Generates Figure 5 with an infomax fit per ganglion cell.
     Steps:
     1) Get FFT of receptive field for each ganglion cell
@@ -850,14 +850,20 @@ def fig5_each_cell(frequencies, spectra, snr):
 
         filt_model = fit_ideal(model_freqs, resampled_ideal/np.nanmax(resampled_ideal), returnFlag='array')
 
-        r            = lambda: np.random.randint(0,255)
-        random_color = '#%02X%02X%02X' % (r(),r(),r())
-        plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color=random_color, alpha=0.7,
-                linestyle='.', marker='o')
-        plt.plot(model_freqs, filt_model, color=random_color, alpha=0.7, linestyle='--',
-                marker='')
-        plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), color=random_color, 
-                alpha=0.5, linewidth=2)
+        if plot_style == 'random':
+            r            = lambda: np.random.randint(0,255)
+            random_color = '#%02X%02X%02X' % (r(),r(),r())
+            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color=random_color, alpha=0.7,
+                    linestyle='.', marker='o')
+            plt.plot(model_freqs, filt_model, color=random_color, alpha=0.7, linestyle='--',
+                    marker='')
+            plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), color=random_color, 
+                    alpha=0.5, linewidth=2)
+        elif plot_style == 'same':
+            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='c', alpha=0.7, linewidth=3)
+            plt.plot(model_freqs, filt_model, color='b', alpha=0.7, linewidth=3)
+            plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), color='k', alpha=0.6, linewidth=2)
+
         plt.tick_params(axis='y', direction='out')
         plt.tick_params(axis='x', direction='out')
         adjust_spines(plt.gca(), ['left', 'bottom'])
