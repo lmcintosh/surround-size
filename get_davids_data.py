@@ -110,7 +110,7 @@ def load_ganglion_cells(micronsPerDeg=50., pca_mode='space'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path = expanduser('~/Documents/Stanford/00 Baccus Lab/Surround size project/david_receptive_fields')
+    data_path = expanduser('~/stanford/papers/2015 Surround Size/david_receptive_fields')
     file_name = data_path + '/allGC.txt'
     data_gc   = np.loadtxt(file_name, delimiter="\t")
     data_gc   = data_gc.reshape((100,80,28))
@@ -142,7 +142,7 @@ def load_bipolar_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path  = expanduser('~/Documents/Stanford/00 Baccus Lab/Surround size project/david_receptive_fields')
+    data_path  = expanduser('~/stanford/papers/2015 Surround Size/david_receptive_fields')
     file_name1 = data_path + '/B1.txt'
     file_name2 = data_path + '/B2.txt'
     data_b1    = np.loadtxt(file_name1, delimiter="\t") # 50 time x 100 space
@@ -171,7 +171,7 @@ def load_amacrine_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path = expanduser('~/Documents/Stanford/00 Baccus Lab/Surround size project/david_receptive_fields')
+    data_path  = expanduser('~/stanford/papers/2015 Surround Size/david_receptive_fields')
     file_name = data_path + '/H1A2.txt'
     data_ha   = np.loadtxt(file_name, delimiter="\t")
     data_ha   = data_ha.reshape((3,50,80))
@@ -196,7 +196,7 @@ def load_horizontal_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path = expanduser('~/Documents/Stanford/00 Baccus Lab/Surround size project/david_receptive_fields')
+    data_path  = expanduser('~/stanford/papers/2015 Surround Size/david_receptive_fields')
     
     ###### CELL 1 ######
     file_name = data_path + '/H1A2.txt'
