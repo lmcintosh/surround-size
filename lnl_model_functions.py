@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
-from math import tanh
+from math import tanh, pi
 from scipy.interpolate import interp1d
 from scipy.signal import fftconvolve
 from PIL import Image
@@ -12,7 +12,7 @@ import brewer2mpl
 import time
 
 # my packages for estimating entropy
-from info_theory_functions import *
+#from info_theory_functions import *
 
 # path to van Hateren Natural Image Database
 #im_path = '/Users/lmcintosh/Dropbox/Stanford University/CS 229 Machine Learning/Project/Natural_Images'

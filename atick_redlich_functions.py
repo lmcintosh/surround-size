@@ -25,7 +25,7 @@ def get_lambda(r0, inputNoise, outputNoise):
         left = lhs(lam)
         return abs(left-rhs)/(abs(left) + abs(rhs))
     
-    lam = 5*rand(1)
+    lam = 5*np.random.rand(1)
     res = minimize(relativeDifference, x0=lam, method='nelder-mead')
     
     return res.x, res.fun
@@ -42,11 +42,11 @@ def unique_soln(r0, inputNoise, outputNoise, verbose=True):
     
     lam, relErr = get_lambda(r0, inputNoise, outputNoise)
     if verbose:
-        print 'The relative error from this choice of Lagrangian multiplier is %s.' %(relErr)
+        print('The relative error from this choice of Lagrangian multiplier is %s.' %(relErr))
         
     f = ((1. / N**2) * (.5 * r0/r * (1 + np.sqrt(1 + (2 * lam * N**2)/r0)) - 1)).astype(complex)
     
-    return real(outputNoise * np.sqrt(f))
+    return np.real(outputNoise * np.sqrt(f))
 
 def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space_a=None, proj_a=None, 
         inputNoise=0.1, outputNoise=0.4, center_weighting=2.1, surround_weighting=0.1,

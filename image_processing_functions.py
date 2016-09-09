@@ -12,7 +12,7 @@ def load_images(path, numImages, patchSize=None, acceptedExtensions=['.imc','LUM
     for ext in acceptedExtensions:
         allfiles = allfiles + [f for f in listdir(path) if isfile(join(path,f)) and ext in f]
     if len(allfiles) < numImages:
-        print 'Only ' + str(len(allfiles)) + ' files in directory.'
+        print('Only ' + str(len(allfiles)) + ' files in directory.')
     names    = allfiles[:numImages]
     patches  = []
 
