@@ -622,7 +622,7 @@ def fit_ideal(freqs, amplitude, returnFlag='array'):
     
     def rf_fft(freqs, horz_weighting, ama_weighting, center_weighting, surround_weighting, center_width):
         # make surround
-        surround       = horz_weighting * horz_pf + ama_weighting * ama_pf
+        surround = horz_weighting * horz_pf + ama_weighting * ama_pf
 
         # make center
         if center_width is None:
@@ -644,7 +644,7 @@ def fit_ideal(freqs, amplitude, returnFlag='array'):
             rf_f_one_sided = rf_f_two_sided[:(n-1)/2 + 1]
         rf_freqs_one_sided = np.linspace(0, 1./(2*spacing), len(rf_f_one_sided))
 
-        rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided)
+        rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided, kind='slinear', fill_value=[0.0], bounds_error=False)
         return rf_interp(freqs)/np.nanmax(rf_interp(freqs))
 
     # fit least-squares
@@ -654,6 +654,9 @@ def fit_ideal(freqs, amplitude, returnFlag='array'):
         return rf_fft(freqs, *popt)
     if returnFlag == 'interp':
         return rf_fft, popt
+    if returnFlag == 'all':
+        horz_weight, ama_weight, center_weight, surround_weight, center_width = popt
+        return freqs, rf_fft(freqs, *popt), horz_weight, ama_weight, center_weight, surround_weight, center_width
 
 def fit_ideal_horz_only(freqs, amplitude, returnFlag='array'):
     '''Fit a linear combination of horizontal + amacrine + Gaussian center
@@ -709,6 +712,9 @@ def fit_ideal_horz_only(freqs, amplitude, returnFlag='array'):
         return rf_fft(freqs, *popt)
     if returnFlag == 'interp':
         return rf_fft, popt
+    if returnFlag == 'all':
+        center_weight, surround_weight, center_width = popt
+        return freqs, rf_fft(freqs, *popt), center_weight, surround_weight, center_width
 
 def fit_ideal_ama_only(freqs, amplitude, returnFlag='array'):
     '''Fit a linear combination of horizontal + amacrine + Gaussian center
@@ -764,6 +770,10 @@ def fit_ideal_ama_only(freqs, amplitude, returnFlag='array'):
         return rf_fft(freqs, *popt)
     if returnFlag == 'interp':
         return rf_fft, popt
+    if returnFlag == 'all':
+        center_weight, surround_weight, center_width = popt
+        return freqs, rf_fft(freqs, *popt), center_weight, surround_weight, center_width
+
 
 def get_snr(input_noise, output_noise, signal_spectrum, filter_spectrum):
     ''' Returns the SNR as a function of the standard deviation of input and 
