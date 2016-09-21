@@ -590,7 +590,7 @@ def adjust_spines(ax, spines):
         ax.xaxis.set_ticks([])
 
 
-def fit_ideal(freqs, amplitude, returnFlag='array'):
+def fit_ideal(freqs, amplitude, center_width=None, returnFlag='array'):
     '''Fit a linear combination of horizontal + amacrine + Gaussian center
     to the amplitude spectrum of the ideal infomax filter.
     
@@ -620,12 +620,12 @@ def fit_ideal(freqs, amplitude, returnFlag='array'):
     # set sampling rate
     spacing = space[-1] - space[-2]
     
-    def rf_fft(freqs, horz_weighting, ama_weighting, center_weighting, surround_weighting, center_width):
+    def rf_fft(freqs, horz_weighting, ama_weighting, center_weighting, surround_weighting, center_width=center_width):
         # make surround
         surround = horz_weighting * horz_pf + ama_weighting * ama_pf
 
         # make center
-        if center_width is None:
+        if center_width is 0.0:
             center = np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
         else:
             center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
@@ -648,17 +648,23 @@ def fit_ideal(freqs, amplitude, returnFlag='array'):
         return rf_interp(freqs)/np.nanmax(rf_interp(freqs))
 
     # fit least-squares
-    popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[0.5, 0.75, 6., 0.45, 1.7])
+    if center_width is None:
+        popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[0.5, 0.75, 6., 0.45, 1.7])
+    else:
+        popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[0.5, 0.75, 6., 0.45])
 
     if returnFlag == 'array':
         return rf_fft(freqs, *popt)
     if returnFlag == 'interp':
         return rf_fft, popt
     if returnFlag == 'all':
-        horz_weight, ama_weight, center_weight, surround_weight, center_width = popt
+        if center_width is None:
+            horz_weight, ama_weight, center_weight, surround_weight, center_width = popt
+        else:
+            horz_weight, ama_weight, center_weight, surround_weight = popt
         return freqs, rf_fft(freqs, *popt), horz_weight, ama_weight, center_weight, surround_weight, center_width
 
-def fit_ideal_horz_only(freqs, amplitude, returnFlag='array'):
+def fit_ideal_horz_only(freqs, amplitude, center_width=None, returnFlag='array'):
     '''Fit a linear combination of horizontal + amacrine + Gaussian center
     to the amplitude spectrum of the ideal infomax filter'''
 
@@ -678,12 +684,12 @@ def fit_ideal_horz_only(freqs, amplitude, returnFlag='array'):
     # set sampling rate
     spacing = space[-1] - space[-2]
     
-    def rf_fft(freqs, center_weighting, surround_weighting, center_width):
+    def rf_fft(freqs, center_weighting, surround_weighting, center_width=center_width):
         # make surround
         surround       = horz_pf
 
         # make center
-        if center_width is None:
+        if center_width is 0.0:
             center = np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
         else:
             center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
@@ -706,17 +712,23 @@ def fit_ideal_horz_only(freqs, amplitude, returnFlag='array'):
         return rf_interp(freqs)/np.nanmax(rf_interp(freqs))
 
     # fit least-squares
-    popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[6., 0.45, 1.7])
+    if center_width is None:
+        popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[6., 0.45, 1.7])
+    else: 
+        popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[6., 0.45])
 
     if returnFlag == 'array':
         return rf_fft(freqs, *popt)
     if returnFlag == 'interp':
         return rf_fft, popt
     if returnFlag == 'all':
-        center_weight, surround_weight, center_width = popt
+        if center_width is None:
+            center_weight, surround_weight, center_width = popt
+        else:
+            center_weight, surround_weight = popt
         return freqs, rf_fft(freqs, *popt), center_weight, surround_weight, center_width
 
-def fit_ideal_ama_only(freqs, amplitude, returnFlag='array'):
+def fit_ideal_ama_only(freqs, amplitude, center_width=None, returnFlag='array'):
     '''Fit a linear combination of horizontal + amacrine + Gaussian center
     to the amplitude spectrum of the ideal infomax filter'''
 
@@ -736,12 +748,12 @@ def fit_ideal_ama_only(freqs, amplitude, returnFlag='array'):
     # set sampling rate
     spacing = space[-1] - space[-2]
     
-    def rf_fft(freqs, center_weighting, surround_weighting, center_width):
+    def rf_fft(freqs, center_weighting, surround_weighting, center_width=center_width):
         # make surround
         surround       = ama_pf
 
         # make center
-        if center_width is None:
+        if center_width is 0.0:
             center = np.where(abs(surround)==np.max(abs(surround)), 1, 0) # delta function
         else:
             center = gaussian(x=space, sigma=center_width, mu=space[abs(surround)==np.max(abs(surround))]) # gaussian
@@ -764,14 +776,20 @@ def fit_ideal_ama_only(freqs, amplitude, returnFlag='array'):
         return rf_interp(freqs)/np.nanmax(rf_interp(freqs))
 
     # fit least-squares
-    popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[6., 0.45, 1.7])
+    if center_width is None:
+        popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[6., 0.45, 1.7])
+    else:
+        popt, pcov = curve_fit(rf_fft, freqs, amplitude, p0=[6., 0.45])
 
     if returnFlag == 'array':
         return rf_fft(freqs, *popt)
     if returnFlag == 'interp':
         return rf_fft, popt
     if returnFlag == 'all':
-        center_weight, surround_weight, center_width = popt
+        if center_width is None:
+            center_weight, surround_weight, center_width = popt
+        else:
+            center_weight, surround_weight = popt
         return freqs, rf_fft(freqs, *popt), center_weight, surround_weight, center_width
 
 
