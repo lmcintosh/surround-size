@@ -33,7 +33,10 @@ def get_lambda(r0, inputNoise, outputNoise):
 
 def unique_soln(r0, inputNoise, outputNoise, verbose=True):
     '''R_0 is input covariance matrix
-       R is R_0 + N^2 delta_n,m'''
+       R is R_0 + N^2 delta_n,m
+       Since variance at each frequency is the power spectrum,
+       r0 should be power spectrum, NOT amplitude spectrum.
+    '''
 
     #R = np.array(R_0) + inputNoise**2 #* np.eye(*R_0.shape)
     N  = inputNoise
@@ -108,9 +111,9 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
     rf_f_two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
     n = len(rf_f_two_sided)
     if n % 2 == 0:
-        rf_f_one_sided = rf_f_two_sided[:n/2 + 1]
+        rf_f_one_sided = rf_f_two_sided[:(int(n/2) + 1)]
     else:
-        rf_f_one_sided = rf_f_two_sided[:(n-1)/2 + 1]
+        rf_f_one_sided = rf_f_two_sided[:(int((n-1)/2) + 1)]
     rf_freqs_one_sided = np.linspace(0, 1./(2*spacing), len(rf_f_one_sided))
 
     
@@ -171,9 +174,9 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
                 two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
                 n = len(two_sided)
                 if n % 2 == 0:
-                    rf_ffts.append(two_sided[:n/2 + 1])
+                    rf_ffts.append(two_sided[:(int(n/2) + 1)])
                 else:
-                    rf_ffts.append(two_sided[:(n-1)/2 + 1])
+                    rf_ffts.append(two_sided[:(int((n-1)/2) + 1)])
 
         rf_fft_f    = np.linspace(0, 1./(2.*(space[-1]-space[-2])), len(rf_ffts[0]))
         rf_ffts_err = sem(rf_ffts)
@@ -302,9 +305,9 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
                     two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
                     n = len(two_sided)
                     if n % 2 == 0:
-                        rf_ffts.append(two_sided[:n/2 + 1])
+                        rf_ffts.append(two_sided[:(int(n/2) + 1)])
                     else:
-                        rf_ffts.append(two_sided[:(n-1)/2 + 1])
+                        rf_ffts.append(two_sided[:(int((n-1)/2) + 1)])
 
             rf_ffts_err = sem(rf_ffts)
             scaling = np.nanmax(rf_f_one_sided)
@@ -391,9 +394,9 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
                     two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
                     n = len(two_sided)
                     if n % 2 == 0:
-                        rf_ffts.append(two_sided[:n/2 + 1])
+                        rf_ffts.append(two_sided[:(int(n/2) + 1)])
                     else:
-                        rf_ffts.append(two_sided[:(n-1)/2 + 1])
+                        rf_ffts.append(two_sided[:(int((n-1)/2) + 1)])
 
             rf_ffts_err = sem(rf_ffts)
             scaling = np.nanmax(rf_f_one_sided)
@@ -463,9 +466,9 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
             n = len(two_sided)
             if n % 2 == 0:
-                rf_ffts.append(two_sided[:n/2 + 1])
+                rf_ffts.append(two_sided[:(int(n/2) + 1)])
             else:
-                rf_ffts.append(two_sided[:(n-1)/2 + 1])
+                rf_ffts.append(two_sided[:(int((n-1)/2) + 1)])
 
         rf_ffts_err = sem(rf_ffts)
         scaling = np.nanmax(rf_f_one_sided)
@@ -526,9 +529,9 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
             two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
             n = len(two_sided)
             if n % 2 == 0:
-                rf_ffts.append(two_sided[:n/2 + 1])
+                rf_ffts.append(two_sided[:(int(n/2) + 1)])
             else:
-                rf_ffts.append(two_sided[:(n-1)/2 + 1])
+                rf_ffts.append(two_sided[:(int((n-1)/2) + 1)])
 
         rf_ffts_err = sem(rf_ffts)
         scaling = np.nanmax(rf_f_one_sided)
@@ -639,9 +642,9 @@ def fit_ideal(freqs, amplitude, center_width=None, returnFlag='array'):
         rf_f_two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
         n = len(rf_f_two_sided)
         if n % 2 == 0:
-            rf_f_one_sided = rf_f_two_sided[:n/2 + 1]
+            rf_f_one_sided = rf_f_two_sided[:(int(n/2) + 1)]
         else:
-            rf_f_one_sided = rf_f_two_sided[:(n-1)/2 + 1]
+            rf_f_one_sided = rf_f_two_sided[:(int((n-1)/2) + 1)]
         rf_freqs_one_sided = np.linspace(0, 1./(2*spacing), len(rf_f_one_sided))
 
         rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided, kind='slinear', fill_value=[0.0], bounds_error=False)
@@ -703,12 +706,13 @@ def fit_ideal_horz_only(freqs, amplitude, center_width=None, returnFlag='array')
         rf_f_two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
         n = len(rf_f_two_sided)
         if n % 2 == 0:
-            rf_f_one_sided = rf_f_two_sided[:n/2 + 1]
+            rf_f_one_sided = rf_f_two_sided[:(int(n/2) + 1)]
         else:
-            rf_f_one_sided = rf_f_two_sided[:(n-1)/2 + 1]
+            rf_f_one_sided = rf_f_two_sided[:(int((n-1)/2) + 1)]
         rf_freqs_one_sided = np.linspace(0, 1./(2*spacing), len(rf_f_one_sided))
 
-        rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided)
+        rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided, kind='slinear', bounds_error=False,
+                fill_value=[0.0])
         return rf_interp(freqs)/np.nanmax(rf_interp(freqs))
 
     # fit least-squares
@@ -767,12 +771,13 @@ def fit_ideal_ama_only(freqs, amplitude, center_width=None, returnFlag='array'):
         rf_f_two_sided = abs(np.fft.fft(rf)) / np.prod(rf.shape)
         n = len(rf_f_two_sided)
         if n % 2 == 0:
-            rf_f_one_sided = rf_f_two_sided[:n/2 + 1]
+            rf_f_one_sided = rf_f_two_sided[:(int(n/2) + 1)]
         else:
-            rf_f_one_sided = rf_f_two_sided[:(n-1)/2 + 1]
+            rf_f_one_sided = rf_f_two_sided[:(int((n-1)/2) + 1)]
         rf_freqs_one_sided = np.linspace(0, 1./(2*spacing), len(rf_f_one_sided))
 
-        rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided)
+        rf_interp = interp1d(rf_freqs_one_sided, rf_f_one_sided, kind='slinear', bounds_error=False,
+                fill_value=[0.0])
         return rf_interp(freqs)/np.nanmax(rf_interp(freqs))
 
     # fit least-squares

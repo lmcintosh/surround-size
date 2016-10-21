@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.decomposition import PCA
-from os.path import expanduser
 from scipy.interpolate import interp1d
 from scipy.stats import sem
 
@@ -110,7 +109,7 @@ def load_ganglion_cells(micronsPerDeg=50., pca_mode='space'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path = expanduser('~/stanford/papers/2016 Surround Size/david_receptive_fields')
+    data_path = '../data'
     file_name = data_path + '/allGC.txt'
     data_gc   = np.loadtxt(file_name, delimiter="\t")
     data_gc   = data_gc.reshape((100,80,28))
@@ -142,7 +141,7 @@ def load_bipolar_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path  = expanduser('~/stanford/papers/2016 Surround Size/david_receptive_fields')
+    data_path  = '../data'
     file_name1 = data_path + '/B1.txt'
     file_name2 = data_path + '/B2.txt'
     data_b1    = np.loadtxt(file_name1, delimiter="\t") # 50 time x 100 space
@@ -171,7 +170,7 @@ def load_amacrine_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path  = expanduser('~/stanford/papers/2016 Surround Size/david_receptive_fields')
+    data_path  = '../data'
     file_name = data_path + '/H1A2.txt'
     data_ha   = np.loadtxt(file_name, delimiter="\t")
     data_ha   = data_ha.reshape((3,50,80))
@@ -196,7 +195,7 @@ def load_horizontal_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path  = expanduser('~/stanford/papers/2016 Surround Size/david_receptive_fields')
+    data_path  = '../data'
     
     ###### CELL 1 ######
     file_name = data_path + '/H1A2.txt'

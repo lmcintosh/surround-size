@@ -19,6 +19,5 @@ setup(name = 'surround-size',
             'Topic :: Scientific/Engineering :: Information Analysis'],
         packages = ['surround-size'],
         package_dir = {'surround-size': ''},
-        py_modules = ['atick_redlich_functions', 'get_davids_data', 'image_processing_functions',
-            'lnl_model', 'lnl_model_functions']
+        py_modules = ['surround-size']
         )
