@@ -2,8 +2,8 @@ from setuptools import setup
 
 from setuptools import setup
 
-setup(name = 'surround-size',
-        version = '0.1',
+setup(name = 'surround',
+        version = '0.2',
         description = 'Tools for analyzing intracellular recording data used in surround-size project.',
         author = 'Lane McIntosh',
         author_email = 'lmcintosh@stanford.edu',
@@ -17,7 +17,7 @@ setup(name = 'surround-size',
             'Intended Audience :: Science/Research',
             'Operating System :: MacOS :: MacOS X',
             'Topic :: Scientific/Engineering :: Information Analysis'],
-        packages = ['surround-size'],
-        package_dir = {'surround-size': ''},
-        py_modules = ['surround-size']
+        packages = ['surround'],
+        package_dir = {'surround': 'surround/'},
+        py_modules = ['surround']
         )
