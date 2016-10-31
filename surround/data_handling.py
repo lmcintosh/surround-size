@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from sklearn.decomposition import PCA
 from scipy.interpolate import interp1d
@@ -109,9 +110,9 @@ def load_ganglion_cells(micronsPerDeg=50., pca_mode='space'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path = '../data'
-    file_name = data_path + '/allGC.txt'
-    data_gc   = np.loadtxt(file_name, delimiter="\t")
+    this_dir, this_filename = os.path.split(__file__)
+    filename = this_dir + '/data/allGC.txt'
+    data_gc   = np.loadtxt(filename, delimiter="\t")
     data_gc   = data_gc.reshape((100,80,28))
     nCells    = data_gc.shape[2]
 

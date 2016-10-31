@@ -17,5 +17,6 @@ setup(name = 'surround',
             'Topic :: Scientific/Engineering :: Information Analysis'],
         packages = ['surround'],
         package_dir = {'surround': 'surround/'},
+        package_data = {'surround': ['data/*.txt']},
         py_modules = ['surround']
         )
