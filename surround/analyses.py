@@ -507,3 +507,59 @@ def compare_to_experiment(frequencies, spectra, space_h=None, proj_h=None, space
         except:
             return frequencies, idealFilter, rf_freqs_one_sided, rf_f_one_sided
 
+def fig5_each_cell(frequencies, spectra, snr, plot_style='same'):
+    ''' Generates Figure 5 with an infomax fit per ganglion cell.
+    Steps:
+    1) Get FFT of receptive field for each ganglion cell
+    2) Fit each ganglion RF FFT to an ideal infomax curve, varying input + output noise
+    3) Fit FFT of a linear combination of Ama., Horz., and Center. to the ideal infomax curve
+    4) Plot all of the ideal infomax power spectra and the ffts of the models together
+    
+    INPUTS:
+    frequencies: np array of spatial frequencies corresponding to spectra
+    spectra: np array of original power spectra
+    
+    RETURNS:
+    frequencies_ideal, ideal_filter, frequencies_expt, expt_filter
+    '''
+
+    ###### GET FFT OF GANGLION RFS #######
+    ganglion_rfs  = load_ganglion_cells(micronsPerDeg=50., pca_mode='space')
+    ganglion_ffts = get_fft(ganglion_rfs, mode='amplitude')
+
+    for spatial_freq, ganglion_amp_spect in ganglion_ffts:
+        # get the input and output noise corresponding to the matching ideal condition
+        input_noise, output_noise = corresponding_ideal(frequencies, spectra, spatial_freq, ganglion_amp_spect, snr)
+
+        print (input_noise, output_noise)
+        
+        # get the ideal filter
+        freq_ideal, filt_ideal, tmp1, tmp2 = compare_to_experiment(frequencies, spectra, 
+                inputNoise=abs(input_noise), outputNoise=abs(output_noise), returnFlag=True, plotFlag=False)
+
+        model_freqs     = np.linspace(np.max([np.min(freq_ideal), np.min(spatial_freq)]),
+                np.min([np.max(freq_ideal), np.max(spatial_freq)]), len(freq_ideal))
+        ideal_interp    = interp1d(freq_ideal, filt_ideal, kind='slinear')
+        resampled_ideal = ideal_interp(model_freqs)
+
+        filt_model = fit_ideal(model_freqs, resampled_ideal/np.nanmax(resampled_ideal), returnFlag='array')
+
+        if plot_style == 'random':
+            r            = lambda: np.random.randint(0,255)
+            random_color = '#%02X%02X%02X' % (r(),r(),r())
+            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color=random_color, alpha=0.7,
+                    linestyle='.', marker='o')
+            plt.plot(model_freqs, filt_model, color=random_color, alpha=0.7, linestyle='--',
+                    marker='')
+            plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), color=random_color, 
+                    alpha=0.5, linewidth=2)
+        elif plot_style == 'same':
+            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='c', alpha=0.7, linewidth=3)
+            plt.plot(model_freqs, filt_model, color='b', alpha=0.7, linewidth=3)
+            plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), color='k', alpha=0.6, linewidth=2)
+
+        plt.tick_params(axis='y', direction='out')
+        plt.tick_params(axis='x', direction='out')
+        adjust_spines(plt.gca(), ['left', 'bottom'])
+        plt.xlim([0,1])
+        plt.ylim([0,1.1])

@@ -278,26 +278,20 @@ def get_snr(input_noise, output_noise, signal_spectrum, filter_spectrum, signal_
     Input noise is the amplitude spectrum of input noise. Output noise is amplitude
     spectrum of output noise.
 
-    Note: amplitude spectra must be normalized by 1/len(x) so that spectra[0]
-    is the mean of x.
-
+    Note: amplitude spectra must be unnormalized abs(np.fft.rfft(x))
     Signal and filter spectra must be one-sided amplitude spectra.
     
     SNR is (Signal Variance)/(Noise Variance). We can compute this from
     the amplitude spectra because Var(X) = 2*integral(power spectrum).
     '''
-    if len(signal_spectrum) != len(filter_spectrum):
-        print('Warning: signal spectrum is length %d but filter spectrum is length %d.' %(len(signal_spectrum),
-                    len(filter_spectrum)))
-        assert signal_freqs is not None, 'You must specify signal frequencies.'
-        assert filter_freqs is not None, 'You must specify filter frequencies.'
+    assert len(signal_spectrum) == len(filter_spectrum), "Signal and filter spectra must be \\
+                                 equal sample numbers and sampling rate."
 
-        # Just interpolate filter spectrum to be over the same range as the signal
-        filt_interp = interp1d(filter_freqs, filter_spectrum, kind='slinear', bounds_error=False, fill_value=[0])
-        filter_spectrum = filt_interp(signal_freqs)
+    # By Parseval's thereom, to equate Power in frequency and time domain, we need to divide
+    # by a factor T. To then get variance, there is an additional 1/T factor.
+    # However, since we're returning the ratio of two variances, these 1/T**2 factors cancel.
 
-
-    signal_var = 2.0*np.sum((filter_spectrum[1:] * signal_spectrum[1:])**2)
+    signal_var = 2.0*np.sum((filter_spectrum[1:] * signal_spectrum[1:])**2) 
     noise_var  = 2.0*np.sum((filter_spectrum[1:] * input_noise)**2 + output_noise**2)
 
     return signal_var / noise_var
@@ -331,63 +325,3 @@ def corresponding_ideal(frequencies, spectrum, expt_freq, expt_amplitude_spectru
 #            constraints={'type':'eq', 'fun':constraint}, options={'disp':True})
 
     return res.x
-
-
-
-
-def fig5_each_cell(frequencies, spectra, snr, plot_style='same'):
-    ''' Generates Figure 5 with an infomax fit per ganglion cell.
-    Steps:
-    1) Get FFT of receptive field for each ganglion cell
-    2) Fit each ganglion RF FFT to an ideal infomax curve, varying input + output noise
-    3) Fit FFT of a linear combination of Ama., Horz., and Center. to the ideal infomax curve
-    4) Plot all of the ideal infomax power spectra and the ffts of the models together
-    
-    INPUTS:
-    frequencies: np array of spatial frequencies corresponding to spectra
-    spectra: np array of original power spectra
-    
-    RETURNS:
-    frequencies_ideal, ideal_filter, frequencies_expt, expt_filter
-    '''
-
-    ###### GET FFT OF GANGLION RFS #######
-    ganglion_rfs  = load_ganglion_cells(micronsPerDeg=50., pca_mode='space')
-    ganglion_ffts = get_fft(ganglion_rfs, mode='amplitude')
-
-    for spatial_freq, ganglion_amp_spect in ganglion_ffts:
-        # get the input and output noise corresponding to the matching ideal condition
-        input_noise, output_noise = corresponding_ideal(frequencies, spectra, spatial_freq, ganglion_amp_spect, snr)
-
-        print (input_noise, output_noise)
-        
-        # get the ideal filter
-        freq_ideal, filt_ideal, tmp1, tmp2 = compare_to_experiment(frequencies, spectra, 
-                inputNoise=abs(input_noise), outputNoise=abs(output_noise), returnFlag=True, plotFlag=False)
-
-        model_freqs     = np.linspace(np.max([np.min(freq_ideal), np.min(spatial_freq)]),
-                np.min([np.max(freq_ideal), np.max(spatial_freq)]), len(freq_ideal))
-        ideal_interp    = interp1d(freq_ideal, filt_ideal, kind='slinear')
-        resampled_ideal = ideal_interp(model_freqs)
-
-        filt_model = fit_ideal(model_freqs, resampled_ideal/np.nanmax(resampled_ideal), returnFlag='array')
-
-        if plot_style == 'random':
-            r            = lambda: np.random.randint(0,255)
-            random_color = '#%02X%02X%02X' % (r(),r(),r())
-            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color=random_color, alpha=0.7,
-                    linestyle='.', marker='o')
-            plt.plot(model_freqs, filt_model, color=random_color, alpha=0.7, linestyle='--',
-                    marker='')
-            plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), color=random_color, 
-                    alpha=0.5, linewidth=2)
-        elif plot_style == 'same':
-            plt.plot(freq_ideal, filt_ideal/np.nanmax(filt_ideal), color='c', alpha=0.7, linewidth=3)
-            plt.plot(model_freqs, filt_model, color='b', alpha=0.7, linewidth=3)
-            plt.plot(spatial_freq, ganglion_amp_spect/np.nanmax(ganglion_amp_spect), color='k', alpha=0.6, linewidth=2)
-
-        plt.tick_params(axis='y', direction='out')
-        plt.tick_params(axis='x', direction='out')
-        adjust_spines(plt.gca(), ['left', 'bottom'])
-        plt.xlim([0,1])
-        plt.ylim([0,1.1])
