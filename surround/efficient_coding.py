@@ -5,10 +5,13 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
 # my functions
-from surround.model_functions import *
+from surround.modeling import *
 from surround.data_handling import *
 
 def get_lambda(r0, inputNoise, outputNoise):
+    '''Numerical minimization of Lagrangian in Atick & Redlich 1990. 
+       Returns lambda and the error.
+    '''
 
     assert np.min(r0) >= 0, 'Uhoh, the power spectra is negative!'
     
@@ -268,18 +271,34 @@ def fit_ideal_ama_only(freqs, amplitude, center_width=None, returnFlag='array'):
         return freqs, rf_fft(freqs, *popt), center_weight, surround_weight, center_width
 
 
-def get_snr(input_noise, output_noise, signal_spectrum, filter_spectrum):
+def get_snr(input_noise, output_noise, signal_spectrum, filter_spectrum, signal_freqs=None, filter_freqs=None):
     ''' Returns the SNR as a function of the standard deviation of input and 
     output noise, and the signal amplitude spectrum.
 
+    Input noise is the amplitude spectrum of input noise. Output noise is amplitude
+    spectrum of output noise.
+
     Note: amplitude spectra must be normalized by 1/len(x) so that spectra[0]
     is the mean of x.
+
+    Signal and filter spectra must be one-sided amplitude spectra.
     
     SNR is (Signal Variance)/(Noise Variance). We can compute this from
     the amplitude spectra because Var(X) = 2*integral(power spectrum).
     '''
-    signal_var = 2.0*np.sum(signal_spectrum[1:]**2)
-    noise_var  = input_noise**2 * (2*np.sum(filter_spectrum) - filter_spectrum[0]) + output_noise**2
+    if len(signal_spectrum) != len(filter_spectrum):
+        print('Warning: signal spectrum is length %d but filter spectrum is length %d.' %(len(signal_spectrum),
+                    len(filter_spectrum)))
+        assert signal_freqs is not None, 'You must specify signal frequencies.'
+        assert filter_freqs is not None, 'You must specify filter frequencies.'
+
+        # Just interpolate filter spectrum to be over the same range as the signal
+        filt_interp = interp1d(filter_freqs, filter_spectrum, kind='slinear', bounds_error=False, fill_value=[0])
+        filter_spectrum = filt_interp(signal_freqs)
+
+
+    signal_var = 2.0*np.sum((filter_spectrum[1:] * signal_spectrum[1:])**2)
+    noise_var  = 2.0*np.sum((filter_spectrum[1:] * input_noise)**2 + output_noise**2)
 
     return signal_var / noise_var
 
