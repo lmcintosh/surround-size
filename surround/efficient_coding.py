@@ -284,7 +284,7 @@ def get_snr(input_noise, output_noise, signal_spectrum, filter_spectrum, signal_
     SNR is (Signal Variance)/(Noise Variance). We can compute this from
     the amplitude spectra because Var(X) = 2*integral(power spectrum).
     '''
-    assert len(signal_spectrum) == len(filter_spectrum), "Signal and filter spectra must be \\
+    assert len(signal_spectrum) == len(filter_spectrum), "Signal and filter spectra must be \
                                  equal sample numbers and sampling rate."
 
     # By Parseval's thereom, to equate Power in frequency and time domain, we need to divide
