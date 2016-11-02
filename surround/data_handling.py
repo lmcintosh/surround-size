@@ -110,8 +110,8 @@ def load_ganglion_cells(micronsPerDeg=50., pca_mode='space'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    this_dir, this_filename = os.path.split(__file__)
-    filename = this_dir + '/data/allGC.txt'
+    data_path, this_filename = os.path.split(__file__)
+    filename = data_path + '/data/allGC.txt'
     data_gc   = np.loadtxt(filename, delimiter="\t")
     data_gc   = data_gc.reshape((100,80,28))
     nCells    = data_gc.shape[2]
@@ -142,9 +142,9 @@ def load_bipolar_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path  = '../data'
-    file_name1 = data_path + '/B1.txt'
-    file_name2 = data_path + '/B2.txt'
+    data_path, this_filename = os.path.split(__file__)
+    file_name1 = data_path + '/data/B1.txt'
+    file_name2 = data_path + '/data/B2.txt'
     data_b1    = np.loadtxt(file_name1, delimiter="\t") # 50 time x 100 space
     data_b2    = np.loadtxt(file_name2, delimiter="\t") # 50 time x 100 space
     data_b     = [data_b1, data_b2]
