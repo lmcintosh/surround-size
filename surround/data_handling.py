@@ -78,22 +78,19 @@ def get_mean(data, interpolation='slinear', nPoints=200, mode='full'):
 
 def get_fft(data, mode='fourier'):
     '''Return (frq, fft) tuple.
-       Mode can be 'fourier', 'amplitude', or 'power'
+       Mode can be 'fourier', 'amplitude', or 'power'.
+
+       Assumes data is real valued.
     '''
     ffts = []
 
     for space, y in data:
         if mode == 'fourier':
-            fft_two_sided = np.fft.fft(y)
+            fft_one_sided = np.fft.rfft(y)
         if mode == 'amplitude':
-            fft_two_sided = abs(np.fft.fft(y))
+            fft_one_sided = abs(np.fft.rfft(y))
         if mode == 'power':
-            fft_two_sided = abs(np.fft.fft(y))**2
-        n = len(fft_two_sided)
-        if n % 2 == 0:
-            fft_one_sided = fft_two_sided[:n/2 + 1]
-        else:
-            fft_one_sided = fft_two_sided[:(n-1)/2 + 1]
+            fft_one_sided = abs(np.fft.rfft(y))**2
 
         spacing = space[-1] - space[-2]
         freqs_one_sided = np.linspace(0, 1./(2*spacing), len(fft_one_sided))
@@ -171,8 +168,8 @@ def load_amacrine_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path  = '../data'
-    file_name = data_path + '/H1A2.txt'
+    data_path, this_filename = os.path.split(__file__)
+    file_name = data_path + '/data/H1A2.txt'
     data_ha   = np.loadtxt(file_name, delimiter="\t")
     data_ha   = data_ha.reshape((3,50,80))
     data_a    = data_ha[1:, :, :] # first cell in this file is a horizontal cell
@@ -196,10 +193,9 @@ def load_horizontal_cells(micronsPerDeg=50.):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
-    data_path  = '../data'
-    
+    data_path, this_filename = os.path.split(__file__)
     ###### CELL 1 ######
-    file_name = data_path + '/H1A2.txt'
+    file_name = data_path + '/data/H1A2.txt'
     data_ha   = np.loadtxt(file_name, delimiter="\t")
     data_ha   = data_ha.reshape((3,50,80))
     data_h    = data_ha[0, :, :] # first cell in this file is a horizontal cell
@@ -215,7 +211,7 @@ def load_horizontal_cells(micronsPerDeg=50.):
 
 
     ###### CELL 2 ######
-    file_name = data_path + '/H2.txt'
+    file_name = data_path + '/data/H2.txt'
     data_h    = np.loadtxt(file_name, delimiter="\t") # shape is (50, 100) or (time, space)
 
     # get spacing for spatial receptive fields

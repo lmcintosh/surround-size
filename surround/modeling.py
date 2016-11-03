@@ -6,7 +6,7 @@ def gaussian(x=np.linspace(-1, 1, 10), sigma=1., mu=0., magnitude=1):
        with mean mu, standard deviation sigma, and
        evaluated at x.
     '''
-    return magnitude * np.array([(1./(2.*pi*sigma**2))*np.exp((-(xi-mu)**2.)/(2.*sigma**2)) for xi in x])
+    return magnitude * np.array([(1./(2.*np.math.pi*sigma**2))*np.exp((-(xi-mu)**2.)/(2.*sigma**2)) for xi in x])
 
 
 def difference_of_gaussians(x=np.linspace(-1, 1, 10), sigma1=1, sigma2=2, strength1=1, strength2=2, mu=0.):
