@@ -8,51 +8,49 @@ import matplotlib.pyplot as plt
 from surround.modeling import *
 from surround.data_handling import *
 
-def get_lambda(r0, inputNoise, outputNoise):
-    '''Numerical minimization of Lagrangian in Atick & Redlich 1990. 
+def get_lambda(r0, input_noise, output_noise):
+    '''input_noiseumerical minimization of Lagrangian in Atick & Redlich 1990. 
        Returns lambda and the error.
     '''
 
     assert np.min(r0) >= 0, 'Uhoh, the power spectra is negative!'
     
-    N = inputNoise
     def lhs(lam):
-        return np.sum(np.log(np.sqrt(r0/(2 * lam * N**2)) + np.sqrt(1 + (r0/(2 * lam * N**2)))))
+        return np.sum(np.log(np.sqrt(r0/(2 * lam * input_noise**2)) + np.sqrt(1 + (r0/(2 * lam * input_noise**2)))))
     
-    #R = np.array(R_0) + inputNoise**2
+    #R = np.array(R_0) + input_noise**2
     r0 = np.array(r0)
-    r  = r0 + N**2
-    rhs = 0.5 * np.sum(np.log((r/(N**2)) * ((N**2 + outputNoise**2)/(r + outputNoise**2))))
+    r  = r0 + input_noise**2
+    rhs = 0.5 * np.sum(np.log((r/(input_noise**2)) * ((input_noise**2 + output_noise**2)/(r + output_noise**2))))
     
-    def relativeDifference(lam):
+    def relative_difference(lam):
         left = lhs(lam)
         return abs(left-rhs)/(abs(left) + abs(rhs))
     
     lam = 5*np.random.rand(1)
-    res = minimize(relativeDifference, x0=lam, method='nelder-mead')
+    res = minimize(relative_difference, x0=lam, method='nelder-mead')
     
     return res.x, res.fun
 
 
-def unique_soln(r0, inputNoise, outputNoise, verbose=True):
+def unique_soln(r0, input_noise, output_noise, verbose=True):
     '''R_0 is input covariance matrix
        R is R_0 + N^2 delta_n,m
        Since variance at each frequency is the power spectrum,
        r0 should be power spectrum, NOT amplitude spectrum.
     '''
 
-    #R = np.array(R_0) + inputNoise**2 #* np.eye(*R_0.shape)
-    N  = inputNoise
+    #R = np.array(R_0) + input_noise**2 #* np.eye(*R_0.shape)
     r0 = np.array(r0)
-    r  = r0 + N**2
+    r  = r0 + input_noise**2
     
-    lam, relErr = get_lambda(r0, inputNoise, outputNoise)
+    lam, relErr = get_lambda(r0, input_noise, output_noise)
     if verbose:
         print('The relative error from this choice of Lagrangian multiplier is %s.' %(relErr))
         
-    f = ((1. / N**2) * (.5 * r0/r * (1 + np.sqrt(1 + (2 * lam * N**2)/r0)) - 1)).astype(complex)
+    f = ((1. / input_noise**2) * (.5 * r0/r * (1 + np.sqrt(1 + (2 * lam * input_noise**2)/r0)) - 1)).astype(complex)
     
-    return np.real(outputNoise * np.sqrt(f))
+    return np.real(output_noise * np.sqrt(f))
 
 
 def spectrum_fit(frequencies, spectrum, num_points=5000):
@@ -271,18 +269,75 @@ def fit_ideal_ama_only(freqs, amplitude, center_width=None, returnFlag='array'):
         return freqs, rf_fft(freqs, *popt), center_weight, surround_weight, center_width
 
 
-def get_snr(input_noise, output_noise, signal_spectrum, filter_spectrum, signal_freqs=None, filter_freqs=None):
+def get_signal_var(signal_spectrum, filter_spectrum, total_var=True):
+    ''' Returns the variance of the signal, computed in the frequency domain.
+        All inputs should be amplitude spectra of signals and filters padded
+        with the appropriate number of zeros. The total length of each space-domain
+        array after padding should equal the length of the full convolution of the
+        two arrays.
+
+        e.g.
+        N = len(signal)
+        M = len(filter)
+        size = N + M - 1
+        signal_spectrum = abs(np.fft.rfft(signal, n=size))
+        filter_spectrum = abs(np.fft.rfft(filter, n=size))
+
+        Here np.fft.rfft with the 'n' argument is doing the work of padding.
+
+        Parseval's theorem explains one of the 1/N factors, and the fact that we're
+        computing variance and not power accounts for the second 1/N factor.
+    '''
+    assert len(signal_spectrum) == len(filter_spectrum), "Spectra must be same shape."
+
+    size = len(signal_spectrum) + len(filter_spectrum) - 1
+    if total_var:
+        return 2 * np.sum((filter_spectrum[1:] * signal_spectrum[1:])**2) / size**2
+    else:
+        return 2 * ((filter_spectrum[1:] * signal_spectrum[1:])**2) / size**2
+
+def get_noise_var(input_noise, output_noise, filter_spectrum, total_var=True):
+    ''' Returns the variance of the noise, computed in the frequency domain.
+        All inputs should be amplitude spectra of signals and filters padded
+        with the appropriate number of zeros. The total length of each space-domain
+        array after padding should equal the length of the full convolution of the
+        two arrays.
+
+        e.g.
+        N = len(signal)
+        M = len(filter)
+        size = N + M - 1
+
+        Parseval's theorem explains one of the 1/N factors, and the fact that we're
+        computing variance and not power accounts for the second 1/N factor.
+    '''
+    size = 2 * len(filter_spectrum) - 1
+    if total_var:
+        return 2 * np.sum((filter_spectrum[1:] * input_noise)**2 + output_noise**2) / size**2
+    else:
+        return 2 * ((filter_spectrum[1:] * input_noise)**2 + output_noise**2) / size**2
+
+def get_output_var(input_noise, output_noise, signal_spectrum, filter_spectrum):
+    ''' Returns the total output variance = signal variance + noise variance of a 
+        linear system, in terms of the amplitude spectra of signal, noise, and filter.
+    '''
+    signal_var = get_signal_var(signal_spectrum, filter_spectrum)
+    noise_var = get_noise_var(input_noise, output_noise, filter_spectrum)
+    return signal_var + noise_var
+
+def get_snr(input_noise, output_noise, signal_spectrum, filter_spectrum, 
+        mode='variance'):
     ''' Returns the SNR as a function of the standard deviation of input and 
-    output noise, and the signal amplitude spectrum.
+        output noise, and the signal amplitude spectrum.
 
-    Input noise is the amplitude spectrum of input noise. Output noise is amplitude
-    spectrum of output noise.
+        Input noise is the amplitude spectrum of input noise. Output noise is amplitude
+        spectrum of output noise.
 
-    Note: amplitude spectra must be unnormalized abs(np.fft.rfft(x))
-    Signal and filter spectra must be one-sided amplitude spectra.
+        Note: amplitude spectra must be unnormalized abs(np.fft.rfft(x))
+        Signal and filter spectra must be one-sided amplitude spectra.
     
-    SNR is (Signal Variance)/(Noise Variance). We can compute this from
-    the amplitude spectra because Var(X) = 2*integral(power spectrum).
+        SNR is (Signal Variance)/(Noise Variance). We can compute this from
+        the amplitude spectra because Var(X) = 2*integral(power spectrum).
     '''
     assert len(signal_spectrum) == len(filter_spectrum), "Signal and filter spectra must be \
                                  equal sample numbers and sampling rate."
@@ -291,17 +346,24 @@ def get_snr(input_noise, output_noise, signal_spectrum, filter_spectrum, signal_
     # by a factor T. To then get variance, there is an additional 1/T factor.
     # However, since we're returning the ratio of two variances, these 1/T**2 factors cancel.
 
-    signal_var = 2.0*np.sum((filter_spectrum[1:] * signal_spectrum[1:])**2) 
-    noise_var  = 2.0*np.sum((filter_spectrum[1:] * input_noise)**2 + output_noise**2)
+    signal_var = get_signal_var(signal_spectrum, filter_spectrum)
+    noise_var  = get_noise_var(input_noise, output_noise, filter_spectrum)
 
-    return signal_var / noise_var
+    if mode == 'variance':
+        return signal_var / noise_var
+
+    elif mode == 'std':
+        return np.sqrt(signal_var) / np.sqrt(noise_var)
+
+    else:
+        assert False, "Mode must be either 'variance' or 'std'."
 
 
 def corresponding_ideal(frequencies, spectrum, expt_freq, expt_amplitude_spectrum, snr):
-    '''Takes the power spectra of the signal and the amplitude spectrum of a ganglion cell,
-    and returns the input and output noise for the best match ideal filter.
+    ''' Takes the power spectra of the signal and the amplitude spectrum of a ganglion cell,
+        and returns the input and output noise for the best match ideal filter.
 
-    Returns the std of the input and output noises.
+        Returns the std of the input and output noises.
     '''
     def objective(noises):
         input_noise, output_noise = noises
