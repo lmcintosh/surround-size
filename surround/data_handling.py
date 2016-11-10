@@ -217,8 +217,8 @@ def load_amacrine_cells(micronsPerDeg=50., space_mode='peak'):
         pca = PCA(n_components=2)
         pca.fit(data_a[n,:,:])
 
-        spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0],
-                    kind=space_mode))
+        spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg, kind=space_mode),
+                    pca.components_[0]))
 
     return spatial_rfs
 
@@ -241,8 +241,8 @@ def load_horizontal_cells(micronsPerDeg=50., space_mode='peak'):
     spatial_rfs = []
     pca = PCA(n_components=2)
     pca.fit(data_h)
-    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0],
-                kind=space_mode))
+    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg, kind=space_mode),
+                pca.components_[0]))
 
 
     ###### CELL 2 ######
@@ -255,8 +255,8 @@ def load_horizontal_cells(micronsPerDeg=50., space_mode='peak'):
     # since receptive fields are noisy, use PCA
     pca = PCA(n_components=2)
     pca.fit(data_h)
-    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0],
-                kind=space_mode))
+    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg, kind=space_mode),
+                pca.components_[0]))
 
     return spatial_rfs
 
