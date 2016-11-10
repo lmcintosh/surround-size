@@ -271,7 +271,7 @@ def get_amacrine_projective_field(micronsPerDeg=50., conv_mode='same'):
         proj_field = np.convolve(proj_range, rf, mode=conv_mode)
         proj_field *= np.mean(rf) / np.mean(proj_field)
 
-        spatial_pfs.append((get_space(proj_field, space[1]-space[0], micronsPerDeg, scale=False), proj_field))
+        spatial_pfs.append((get_space(proj_field, space[1]-space[0], micronsPerDeg, in_degrees=False), proj_field))
 
     return spatial_pfs
 
@@ -286,7 +286,7 @@ def get_horizontal_projective_field(micronsPerDeg=50., conv_mode='same'):
         proj_field = np.convolve(proj_range, rf, mode=conv_mode)
         proj_field *= np.mean(rf) / np.mean(proj_field)
 
-        spatial_pfs.append((get_space(proj_field, space[1]-space[0], micronsPerDeg, scale=False), proj_field))
+        spatial_pfs.append((get_space(proj_field, space[1]-space[0], micronsPerDeg, in_degrees=False), proj_field))
 
     return spatial_pfs
 
