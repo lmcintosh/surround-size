@@ -136,7 +136,7 @@ def get_fft(data, mode='fourier'):
     return ffts
 
 
-def load_ganglion_cells(micronsPerDeg=50., pca_mode='space'):
+def load_ganglion_cells(micronsPerDeg=50., pca_mode='space', space_mode='peak'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -162,13 +162,13 @@ def load_ganglion_cells(micronsPerDeg=50., pca_mode='space'):
 
 
         sign_of_pc = -1 * np.sign(g_pca[abs(g_pca) == np.max(abs(g_pca))])
-        space      = get_space(g_pca, spatialDelta, micronsPerDeg)
+        space      = get_space(g_pca, spatialDelta, micronsPerDeg, kind=space_mode)
 
         spatial_rfs.append((space, sign_of_pc * g_pca))
 
     return spatial_rfs
 
-def load_bipolar_cells(micronsPerDeg=50.):
+def load_bipolar_cells(micronsPerDeg=50., space_mode='peak'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -190,14 +190,14 @@ def load_bipolar_cells(micronsPerDeg=50.):
 
         b_pca      = pca.components_[0]
         sign_of_pc = -1 * np.sign(b_pca[abs(b_pca) == np.max(abs(b_pca))])
-        space      = get_space(b_pca, spatialDelta, micronsPerDeg)
+        space      = get_space(b_pca, spatialDelta, micronsPerDeg, kind=space_mode)
 
         spatial_rfs.append((space, sign_of_pc * b_pca))
 
     return spatial_rfs
 
 
-def load_amacrine_cells(micronsPerDeg=50.):
+def load_amacrine_cells(micronsPerDeg=50., space_mode='peak'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -217,12 +217,13 @@ def load_amacrine_cells(micronsPerDeg=50.):
         pca = PCA(n_components=2)
         pca.fit(data_a[n,:,:])
 
-        spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0]))
+        spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0],
+                    kind=space_mode))
 
     return spatial_rfs
 
 
-def load_horizontal_cells(micronsPerDeg=50.):
+def load_horizontal_cells(micronsPerDeg=50., space_mode='peak'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -240,7 +241,8 @@ def load_horizontal_cells(micronsPerDeg=50.):
     spatial_rfs = []
     pca = PCA(n_components=2)
     pca.fit(data_h)
-    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0]))
+    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0],
+                kind=space_mode))
 
 
     ###### CELL 2 ######
@@ -253,7 +255,8 @@ def load_horizontal_cells(micronsPerDeg=50.):
     # since receptive fields are noisy, use PCA
     pca = PCA(n_components=2)
     pca.fit(data_h)
-    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0]))
+    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg), pca.components_[0],
+                kind=space_mode))
 
     return spatial_rfs
 
