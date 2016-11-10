@@ -4,7 +4,7 @@ from sklearn.decomposition import PCA
 from scipy.interpolate import interp1d
 from scipy.stats import sem
 
-def get_space(rf, spatial_delta, microns_per_deg, in_degrees=True, kind='peak'):
+def get_space(rf, spatial_delta, microns_per_deg, in_degrees=True, kind='peak', thresh=0.1):
     '''Returns a spatial vector for each point in 1d vector rf,
     with zero degrees aligned to the max(abs(rf)).
     INPUT:
@@ -13,6 +13,7 @@ def get_space(rf, spatial_delta, microns_per_deg, in_degrees=True, kind='peak'):
     microns_per_deg is a float in microns/deg
     in_degrees      is a bool to returns pace in degrees
     kind            'peak' or 'area' for determining how to center the rf
+    thresh          is a positive float determining cutoff for area calculation
     
     RETURNS:
     space           is a 1d numpy array in degrees
@@ -24,23 +25,29 @@ def get_space(rf, spatial_delta, microns_per_deg, in_degrees=True, kind='peak'):
     elif kind =='area':
         center = peak
         best_center = center
-        left_area = np.sum(abs(rf[:center]))
-        right_area = np.sum(abs(rf[center:]))
+        left = abs(rf[:center])
+        right = abs(rf[center:])
+        left_area = np.sum(left[left > thresh])
+        right_area = np.sum(right[right > thresh])
         min_difference = abs(left_area - right_area)
         # if we should shift center to the left
         if left_area > right_area:
             while left_area > right_area:
                 center -= 1
-                left_area = np.sum(abs(rf[:center]))
-                right_area = np.sum(abs(rf[center:]))
+                left = abs(rf[:center])
+                right = abs(rf[center:])
+                left_area = np.sum(left[left > thresh])
+                right_area = np.sum(right[right > thresh])
                 if abs(left_area - right_area) < min_difference:
                     best_center = center
         # else we should shift center to the right
         elif right_area > left_area:
             while right_area > left_area:
                 center += 1
-                left_area = np.sum(abs(rf[:center]))
-                right_area = np.sum(abs(rf[center:]))
+                left = abs(rf[:center])
+                right = abs(rf[center:])
+                left_area = np.sum(left[left > thresh])
+                right_area = np.sum(right[right > thresh])
                 if abs(left_area - right_area) < min_difference:
                     best_center = center
         # else best_center stays at center
