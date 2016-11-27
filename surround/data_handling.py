@@ -143,7 +143,7 @@ def get_fft(data, mode='fourier'):
     return ffts
 
 
-def load_ganglion_cells(micronsPerDeg=50., pca_mode='space', space_mode='peak'):
+def load_ganglion_cells(microns_per_deg=50., pca_mode='space', space_mode='peak'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -169,13 +169,13 @@ def load_ganglion_cells(micronsPerDeg=50., pca_mode='space', space_mode='peak'):
 
 
         sign_of_pc = -1 * np.sign(g_pca[abs(g_pca) == np.max(abs(g_pca))])
-        space      = get_space(g_pca, spatialDelta, micronsPerDeg, kind=space_mode)
+        space      = get_space(g_pca, spatialDelta, microns_per_deg, kind=space_mode)
 
         spatial_rfs.append((space, sign_of_pc * g_pca))
 
     return spatial_rfs
 
-def load_bipolar_cells(micronsPerDeg=50., space_mode='peak'):
+def load_bipolar_cells(microns_per_deg=50., space_mode='peak'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -197,14 +197,14 @@ def load_bipolar_cells(micronsPerDeg=50., space_mode='peak'):
 
         b_pca      = pca.components_[0]
         sign_of_pc = -1 * np.sign(b_pca[abs(b_pca) == np.max(abs(b_pca))])
-        space      = get_space(b_pca, spatialDelta, micronsPerDeg, kind=space_mode)
+        space      = get_space(b_pca, spatialDelta, microns_per_deg, kind=space_mode)
 
         spatial_rfs.append((space, sign_of_pc * b_pca))
 
     return spatial_rfs
 
 
-def load_amacrine_cells(micronsPerDeg=50., space_mode='peak'):
+def load_amacrine_cells(microns_per_deg=50., space_mode='peak'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -224,13 +224,13 @@ def load_amacrine_cells(micronsPerDeg=50., space_mode='peak'):
         pca = PCA(n_components=2)
         pca.fit(data_a[n,:,:])
 
-        spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg, kind=space_mode),
+        spatial_rfs.append((get_space(pca.components_[0], spatialDelta, microns_per_deg, kind=space_mode),
                     pca.components_[0]))
 
     return spatial_rfs
 
 
-def load_horizontal_cells(micronsPerDeg=50., space_mode='peak'):
+def load_horizontal_cells(microns_per_deg=50., space_mode='peak'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
 
@@ -248,7 +248,7 @@ def load_horizontal_cells(micronsPerDeg=50., space_mode='peak'):
     spatial_rfs = []
     pca = PCA(n_components=2)
     pca.fit(data_h)
-    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg, kind=space_mode),
+    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, microns_per_deg, kind=space_mode),
                 pca.components_[0]))
 
 
@@ -262,54 +262,54 @@ def load_horizontal_cells(micronsPerDeg=50., space_mode='peak'):
     # since receptive fields are noisy, use PCA
     pca = PCA(n_components=2)
     pca.fit(data_h)
-    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, micronsPerDeg, kind=space_mode),
+    spatial_rfs.append((get_space(pca.components_[0], spatialDelta, microns_per_deg, kind=space_mode),
                 pca.components_[0]))
 
     return spatial_rfs
 
 
-def get_amacrine_projective_field(micronsPerDeg=50., conv_mode='same'):
-    spatial_rfs = load_amacrine_cells(micronsPerDeg=micronsPerDeg)
+def get_amacrine_projective_field(microns_per_deg=50., conv_mode='same'):
+    spatial_rfs = load_amacrine_cells(microns_per_deg=microns_per_deg)
     spatial_pfs = []
-    space_const  = 78./22.
+    space_const  = 78./microns_per_deg
 
     for space, rf in spatial_rfs:
         proj_range = [np.exp(-abs(t)/space_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
         proj_field = np.convolve(proj_range, rf, mode=conv_mode)
         proj_field *= np.mean(rf) / np.mean(proj_field)
 
-        spatial_pfs.append((get_space(proj_field, space[1]-space[0], micronsPerDeg, in_degrees=False), proj_field))
+        spatial_pfs.append((get_space(proj_field, space[1]-space[0], microns_per_deg, in_degrees=False), proj_field))
 
     return spatial_pfs
 
 
-def get_horizontal_projective_field(micronsPerDeg=50., conv_mode='same'):
-    spatial_rfs = load_horizontal_cells(micronsPerDeg=micronsPerDeg)
+def get_horizontal_projective_field(microns_per_deg=50., conv_mode='same'):
+    spatial_rfs = load_horizontal_cells(microns_per_deg=microns_per_deg)
     spatial_pfs = []
-    space_const  = 118./22.
+    space_const  = 118./microns_per_deg
 
     for space, rf in spatial_rfs:
         proj_range = [np.exp(-abs(t)/space_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
         proj_field = np.convolve(proj_range, rf, mode=conv_mode)
         proj_field *= np.mean(rf) / np.mean(proj_field)
 
-        spatial_pfs.append((get_space(proj_field, space[1]-space[0], micronsPerDeg, in_degrees=False), proj_field))
+        spatial_pfs.append((get_space(proj_field, space[1]-space[0], microns_per_deg, in_degrees=False), proj_field))
 
     return spatial_pfs
 
 
-def get_amacrine_projective_fft(micronsPerDeg=50., fft_mode='amplitude'):
+def get_amacrine_projective_fft(microns_per_deg=50., fft_mode='amplitude'):
     '''Returns tuples of (frequencies, amplitude spectrum)
     for amacrine projective field.
     '''
-    spatial_pfs = get_amacrine_projective_field(micronsPerDeg=micronsPerDeg)
+    spatial_pfs = get_amacrine_projective_field(microns_per_deg=microns_per_deg)
 
     return get_fft(spatial_pfs, mode=fft_mode)
 
-def get_horizontal_projective_fft(micronsPerDeg=50., fft_mode='amplitude'):
+def get_horizontal_projective_fft(microns_per_deg=50., fft_mode='amplitude'):
     '''Returns tuples of (frequencies, amplitude spectrum)
     for horizontal projective field.
     '''
-    spatial_pfs = get_horizontal_projective_field(micronsPerDeg=micronsPerDeg)
+    spatial_pfs = get_horizontal_projective_field(microns_per_deg=microns_per_deg)
 
     return get_fft(spatial_pfs, mode=fft_mode)
