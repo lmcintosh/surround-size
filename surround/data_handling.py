@@ -175,6 +175,58 @@ def load_ganglion_cells(microns_per_deg=50., pca_mode='space', space_mode='peak'
 
     return spatial_rfs
 
+
+def load_new_ganglion_cells(microns_per_deg=50., pca_mode='space', space_mode='peak'):
+    ''' Returns list of tuples (space, spatial receptive field)
+    '''
+
+    data_path = os.path.expanduser('~/data/kastner/receptive_fields')
+    filename = data_path + '/allGC.txt'
+    filename0 = data_path + '/allGC_0.txt'
+    data_gc = np.loadtxt(filename, skiprows=1).reshape((-1, 100, 80))
+    data_gc0 = np.loadtxt(filename0, skiprows=1).reshape((-1, 100, 100))
+    nCells = data_gc.shape[0]
+    nCells0 = data_gc.shape[0]
+
+    # get spacing for spatial receptive fields
+    spatialDelta = 0.027 # mm
+    spatialDelta0 = 0.022 # mm
+
+    # since receptive fields are noisy, use PCA
+    spatial_rfs = []
+    for n in range(nCells):
+        pca = PCA(n_components=2)
+        if pca_mode == 'space':
+            pca.fit(data_gc[n])
+            g_pca = pca.components_[0]
+        elif pca_mode == 'time':
+            pca.fit(data_gc[n].T)
+            g_pca = np.dot(data_gc[n].T, pca.components_[0])
+
+
+        sign_of_pc = -1 * np.sign(g_pca[abs(g_pca) == np.max(abs(g_pca))])
+        space = get_space(g_pca, spatialDelta, microns_per_deg, kind=space_mode)
+
+        spatial_rfs.append((space, sign_of_pc * g_pca))
+
+    for n in range(nCells0):
+        pca = PCA(n_components=2)
+        if pca_mode == 'space':
+            pca.fit(data_gc0[n])
+            g_pca = pca.components_[0]
+        elif pca_mode == 'time':
+            pca.fit(data_gc0[n].T)
+            g_pca = np.dot(data_gc0[n].T, pca.components_[0])
+
+
+        sign_of_pc = -1 * np.sign(g_pca[abs(g_pca) == np.max(abs(g_pca))])
+        space = get_space(g_pca, spatialDelta, microns_per_deg, kind=space_mode)
+
+        spatial_rfs.append((space, sign_of_pc * g_pca))
+
+    return spatial_rfs
+
+
 def load_bipolar_cells(microns_per_deg=50., space_mode='peak'):
     ''' Returns list of tuples (space, spatial receptive field)
     '''
