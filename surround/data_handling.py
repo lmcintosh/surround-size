@@ -181,8 +181,8 @@ def load_new_ganglion_cells(microns_per_deg=50., pca_mode='space', space_mode='p
     '''
 
     data_path = os.path.expanduser('~/data/kastner/receptive_fields')
-    filename = data_path + '/allGC.txt'
-    filename0 = data_path + '/allGC_0.txt'
+    filename = data_path + '/allGCs.txt'
+    filename0 = data_path + '/allGCs_0.txt'
     data_gc = np.loadtxt(filename, skiprows=1).reshape((-1, 100, 80))
     data_gc0 = np.loadtxt(filename0, skiprows=1).reshape((-1, 100, 100))
     nCells = data_gc.shape[0]
