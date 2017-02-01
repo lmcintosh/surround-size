@@ -186,7 +186,7 @@ def load_new_ganglion_cells(microns_per_deg=50., pca_mode='space', space_mode='p
     data_gc = np.loadtxt(filename, skiprows=1).reshape((-1, 100, 80))
     data_gc0 = np.loadtxt(filename0, skiprows=1).reshape((-1, 100, 100))
     nCells = data_gc.shape[0]
-    nCells0 = data_gc.shape[0]
+    nCells0 = data_gc0.shape[0]
 
     # get spacing for spatial receptive fields
     spatialDelta = 0.027 # mm
