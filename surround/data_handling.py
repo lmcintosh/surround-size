@@ -323,7 +323,8 @@ def load_horizontal_cells(microns_per_deg=50., space_mode='peak'):
 def get_amacrine_projective_field(microns_per_deg=50., conv_mode='same'):
     spatial_rfs = load_amacrine_cells(microns_per_deg=microns_per_deg)
     spatial_pfs = []
-    space_const  = 78./microns_per_deg
+    #space_const  = 78./microns_per_deg
+    space_const  = 102./microns_per_deg
 
     for space, rf in spatial_rfs:
         proj_range = [np.exp(-abs(t)/space_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
@@ -338,7 +339,8 @@ def get_amacrine_projective_field(microns_per_deg=50., conv_mode='same'):
 def get_horizontal_projective_field(microns_per_deg=50., conv_mode='same'):
     spatial_rfs = load_horizontal_cells(microns_per_deg=microns_per_deg)
     spatial_pfs = []
-    space_const  = 118./microns_per_deg
+    #space_const  = 118./microns_per_deg
+    space_const  = 121./microns_per_deg
 
     for space, rf in spatial_rfs:
         proj_range = [np.exp(-abs(t)/space_const) for t in np.linspace(np.min(space),np.max(space),len(space))]
