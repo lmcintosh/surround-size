@@ -53,9 +53,9 @@ def rf_model(horz_weight, center_weight):
             horz_weight*constants['horz_pf'] + (1-horz_weight)*constants['ama_pf'])
 
 def encoder(horz_weight, center_weight):
-    tf_center = tf.constant(center, dtype=tf.float32)
-    tf_horz_pf = tf.constant(horz_pf, dtype=tf.float32)
-    tf_ama_pf = tf.constant(ama_pf, dtype=tf.float32)
+    tf_center = tf.constant(constants['center'], dtype=tf.float32)
+    tf_horz_pf = tf.constant(constants['horz_pf'], dtype=tf.float32)
+    tf_ama_pf = tf.constant(constants['ama_pf'], dtype=tf.float32)
     tf_surround = (horz_weight * tf_horz_pf + (1 - horz_weight) * tf_ama_pf)
     return center_weight * tf_center + (1.0 - center_weight) * tf_surround
 
