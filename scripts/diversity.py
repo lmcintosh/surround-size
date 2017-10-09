@@ -98,7 +98,6 @@ with tf.device('/gpu:0'):
                         initializer=tf.constant_initializer(constants['output_noise']))
 
                 # GET DATA READY
-                # distortion = tf.placeholder(tf.float32, shape=(batch_size, input_len, 1))
                 label = tf.placeholder(tf.float32, shape=(batch_size, output_len))
                 in_noise = tf.random_normal(shape=label.shape, mean=0.0, stddev=n_in, name='noisy_input')
                 noisy_input = label + in_noise
@@ -161,7 +160,7 @@ with tf.device('/gpu:0'):
                 with tf.Session() as sess:
                     sess.run(tf.global_variables_initializer())
                     for step in range(max_steps):
-                        x, y = training_data(batch_size)
+                        y = generate_spatial_signals(batch_size)
                         update, error, k, hw, cw, decoder, this_snr, snr_reg, ni, no = sess.run(
                             [train_op, mse, kernel, ideal_horz_weights, ideal_center_weights,
                              weights, snr, snr_regularization, n_in, n_out], feed_dict={label: y})
@@ -170,7 +169,7 @@ with tf.device('/gpu:0'):
                             print('Error at step %04d is %0.4f' %(step, error))
                             results['input'].append(x)
                             results['labels'].append(y)
-                            output = sess.run([out], feed_dict={distortion: x, label: y})[0]
+                            output = sess.run([out], feed_dict={label: y})[0]
                             results['output'].append(output)
                             results['kernel'].append(k)
                             results['hw'].append(hw)
@@ -184,7 +183,7 @@ with tf.device('/gpu:0'):
                             print('Error at step %04d is %0.4f' %(step, error))
                             results['input'].append(x)
                             results['labels'].append(y)
-                            output = sess.run([out], feed_dict={distortion: x, label: y})[0]
+                            output = sess.run([out], feed_dict={label: y})[0]
                             results['output'].append(output)
                             results['kernel'].append(k)
                             results['hw'].append(hw)
