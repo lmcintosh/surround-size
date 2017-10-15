@@ -73,149 +73,151 @@ output_len = x.shape[1]
 max_steps = 100000
 lr = 0.01
 gain = 0.6
-both_results = {
+target_snrs = [0.01, 1.0, 100.0]
+both_results = {{
     'random': collections.defaultdict(list),
     'homogenous': collections.defaultdict(list)
-}
+} for t in target_snrs}
 
 with tf.device('/gpu:0'):
-    for random_initialization in [True, False]:
-        mean_errors = []
-        sem_errors = []
-        all_results = []
-        all_errors = []
-        for channel_depth in range(1, max_channel_depth+1):
-            # Universal variables
-            results = collections.defaultdict(list)
+    for target_snr in target_snrs:
+        for random_initialization in [True, False]:
+            mean_errors = []
+            sem_errors = []
+            all_results = []
+            all_errors = []
+            for channel_depth in range(1, max_channel_depth+1):
+                # Universal variables
+                results = collections.defaultdict(list)
 
-            g = tf.Graph()
-            errors = []
-            with g.as_default():
-                # GET INPUT and OUTPUT NOISE
-                n_in = tf.get_variable('noise_in', shape=(1,), dtype=tf.float32,
-                        initializer=tf.constant_initializer(constants['input_noise']))
-                n_out = tf.get_variable('noise_out', shape=(channel_depth,), dtype=tf.float32,
-                        initializer=tf.constant_initializer(constants['output_noise']))
+                g = tf.Graph()
+                errors = []
+                with g.as_default():
+                    # GET INPUT and OUTPUT NOISE
+                    n_in = tf.get_variable('noise_in', shape=(1,), dtype=tf.float32,
+                            initializer=tf.constant_initializer(constants['input_noise']))
+                    n_out = tf.get_variable('noise_out', shape=(channel_depth,), dtype=tf.float32,
+                            initializer=tf.constant_initializer(constants['output_noise']))
 
-                # GET DATA READY
-                label = tf.placeholder(tf.float32, shape=(batch_size, output_len))
-                in_noise = tf.random_normal(shape=label.shape, mean=0.0, stddev=n_in, name='noisy_input')
-                noisy_input = label + in_noise
-                # inputs, num_outputs, kernel_size, stride=1
+                    # GET DATA READY
+                    label = tf.placeholder(tf.float32, shape=(batch_size, output_len))
+                    in_noise = tf.random_normal(shape=label.shape, mean=0.0, stddev=n_in, name='noisy_input')
+                    noisy_input = label + in_noise
+                    # inputs, num_outputs, kernel_size, stride=1
 
-                # GET FILTERS READY
-                # RANDOMLY INITIALIZE
-                # Horizontal weight parameters.
+                    # GET FILTERS READY
+                    # RANDOMLY INITIALIZE
+                    # Horizontal weight parameters.
+                    if random_initialization:
+                        hw_param = tf.get_variable('horz_weights', shape=(channel_depth,), dtype=tf.float32,
+                                initializer=tf.random_uniform_initializer(minval=-5, maxval=5))
+                        ideal_horz_weights = tf.nn.sigmoid(gain * hw_param)  # hw_param
+                    else:
+                        hw_param = tf.constant(0.144, dtype=tf.float32, shape=(channel_depth,), name='horz_weights')
+                        ideal_horz_weights = hw_param # tf.nn.sigmoid(gain * hw_param)
+
+                    # Center weight parameters.
+                    cw_param = tf.get_variable('center_weights', shape=(channel_depth,), dtype=tf.float32,
+                                               initializer=tf.constant_initializer(1.0))
+                    ideal_center_weights = tf.nn.sigmoid(gain * cw_param)
+
+                    filters = []
+                    filtered_output = []
+                    for c in range(channel_depth):
+                        # e = encoder(ideal_horz_weights[c], ideal_center_weights[c])
+                        filters.append(encoder(ideal_horz_weights[c], ideal_center_weights[c]))
+                    kernel = tf.stack(filters, axis=-1)
+                    kernel = tf.expand_dims(kernel, axis=1)
+                    print('Kernel has shape %s.' %(kernel.shape,))
+
+                    # CONVOLUTION WITH IDEAL RFS
+                    distortion = tf.expand_dims(noisy_input, axis=-1)
+                    encoded = tf.nn.conv1d(distortion, kernel, stride=1, padding='SAME', name='encoded')
+                    out_noise = tf.random_normal(shape=encoded.shape, mean=0.0, stddev=n_out, name='output_noise')
+                    noisy_encoded = encoded + out_noise
+                    print('Encoded has shape %s.' %(encoded.shape,))
+                    print('Noisy encoded has shape %s.' %(noisy_encoded,))
+
+                    out = tf.layers.conv1d(noisy_encoded, filters=1, kernel_size=decoder_size, 
+                                           padding='same', name='decoder')
+                    variables = tf.get_collection(tf.GraphKeys.VARIABLES)
+                    weights = tf.get_default_graph().get_tensor_by_name('decoder/kernel:0')
+                    print('Out has shape %s.' %(out.shape,))
+
+                    signal_mean, signal_var = tf.nn.moments(
+                        tf.nn.conv1d(tf.expand_dims(label, axis=-1), kernel, stride=1, padding='SAME'), axes=[1])
+                    all_noise = tf.nn.conv1d(
+                        tf.expand_dims(in_noise, axis=-1), kernel, stride=1, padding='SAME', name='noise') + out_noise
+                    noise_mean, noise_var = tf.nn.moments(tf.squeeze(all_noise), axes=[1])
+                    snr = signal_var/noise_var
+                    snr_regularization = tf.losses.mean_squared_error(
+                            tf.constant(target_snr, dtype=tf.float32, shape=snr.shape), snr)
+
+                    mse = tf.losses.mean_squared_error(label, tf.squeeze(out))
+                    loss = mse + 2. * snr_regularization
+                    # opt = tf.train.GradientDescentOptimizer(lr)
+                    opt = tf.train.AdamOptimizer(learning_rate=lr)
+                    train_op = opt.minimize(loss)
+
+                    with tf.Session() as sess:
+                        sess.run(tf.global_variables_initializer())
+                        for step in range(max_steps):
+                            y = generate_spatial_signals(batch_size)
+                            update, error, k, hw, cw, decoder, this_snr, snr_reg, ni, no = sess.run(
+                                [train_op, mse, kernel, ideal_horz_weights, ideal_center_weights,
+                                 weights, snr, snr_regularization, n_in, n_out], feed_dict={label: y})
+                            errors.append(error)
+                            if step % 1000 == 0:
+                                print('Error at step %04d is %0.4f' %(step, error))
+                                results['input'].append(x)
+                                results['labels'].append(y)
+                                output = sess.run([out], feed_dict={label: y})[0]
+                                results['output'].append(output)
+                                results['kernel'].append(k)
+                                results['hw'].append(hw)
+                                results['cw'].append(cw)
+                                results['decoder'].append(decoder)
+                                results['snr'].append(this_snr)
+                                results['snr_reg'].append(snr_reg)
+                                results['input_noise'].append(ni)
+                                results['output_noise'].append(no)
+                            elif step == max_steps - 1:
+                                print('Error at step %04d is %0.4f' %(step, error))
+                                results['input'].append(x)
+                                results['labels'].append(y)
+                                output = sess.run([out], feed_dict={label: y})[0]
+                                results['output'].append(output)
+                                results['kernel'].append(k)
+                                results['hw'].append(hw)
+                                results['cw'].append(cw)
+                                results['decoder'].append(decoder)
+                                results['snr'].append(this_snr)
+                                results['snr_reg'].append(snr_reg)
+                                results['input_noise'].append(ni)
+                                results['output_noise'].append(no)
+
+                # Collect results.
+                this_mse = np.mean((np.squeeze(results['output'][-1]) - results['labels'][-1])**2)
+                # np.mean([np.mean(
+                #    (results['output'][-1][j] - results['labels'][-1][j])**2) for j in range(batch_size)])
+                this_err = sem((np.squeeze(results['output'][-1]) - results['labels'][-1])**2)
+                # this_err = sem([np.mean(
+                #    (results['output'][-1][j] - results['labels'][-1][j])**2) for j in range(batch_size)])
+
                 if random_initialization:
-                    hw_param = tf.get_variable('horz_weights', shape=(channel_depth,), dtype=tf.float32,
-                            initializer=tf.random_uniform_initializer(minval=0, maxval=1))
-                    ideal_horz_weights = hw_param #tf.nn.sigmoid(gain * hw_param)
+                    random_flag = 'random'
                 else:
-                    hw_param = tf.get_variable('horz_weights', shape=(channel_depth,), dtype=tf.float32,
-                            initializer=tf.constant_initializer(0.0))
-                    ideal_horz_weights = tf.nn.sigmoid(gain * hw_param)
+                    random_flag = 'homogenous'
 
-                # Center weight parameters.
-                cw_param = tf.get_variable('center_weights', shape=(channel_depth,), dtype=tf.float32,
-                                           initializer=tf.constant_initializer(1.0))
-                ideal_center_weights = tf.nn.sigmoid(gain * cw_param)
+                both_results[snr][random_flag]['mean_errors'].append(this_mse)
+                both_results[snr][random_flag]['sem_errors'].append(this_err)
+                both_results[snr][random_flag]['results'].append(results)
+                both_results[snr][random_flag]['errors'].append(errors)
+                both_results[snr][random_flag]['channels'].append(channel_depth)
 
-                filters = []
-                filtered_output = []
-                for c in range(channel_depth):
-                    # e = encoder(ideal_horz_weights[c], ideal_center_weights[c])
-                    filters.append(encoder(ideal_horz_weights[c], ideal_center_weights[c]))
-                kernel = tf.stack(filters, axis=-1)
-                kernel = tf.expand_dims(kernel, axis=1)
-                print('Kernel has shape %s.' %(kernel.shape,))
-
-                # CONVOLUTION WITH IDEAL RFS
-                distortion = tf.expand_dims(noisy_input, axis=-1)
-                encoded = tf.nn.conv1d(distortion, kernel, stride=1, padding='SAME', name='encoded')
-                out_noise = tf.random_normal(shape=encoded.shape, mean=0.0, stddev=n_out, name='output_noise')
-                noisy_encoded = encoded + out_noise
-                print('Encoded has shape %s.' %(encoded.shape,))
-                print('Noisy encoded has shape %s.' %(noisy_encoded,))
-
-                out = tf.layers.conv1d(noisy_encoded, filters=1, kernel_size=decoder_size, 
-                                       padding='same', name='decoder')
-                variables = tf.get_collection(tf.GraphKeys.VARIABLES)
-                weights = tf.get_default_graph().get_tensor_by_name('decoder/kernel:0')
-                print('Out has shape %s.' %(out.shape,))
-
-                signal_mean, signal_var = tf.nn.moments(
-                    tf.nn.conv1d(tf.expand_dims(label, axis=-1), kernel, stride=1, padding='SAME'), axes=[1])
-                all_noise = tf.nn.conv1d(
-                    tf.expand_dims(in_noise, axis=-1), kernel, stride=1, padding='SAME', name='noise') + out_noise
-                noise_mean, noise_var = tf.nn.moments(tf.squeeze(all_noise), axes=[1])
-                snr = signal_var/noise_var
-                snr_regularization = tf.losses.mean_squared_error(
-                        tf.constant(constants['target_snr'], dtype=tf.float32, shape=snr.shape), snr)
-
-                mse = tf.losses.mean_squared_error(label, tf.squeeze(out))
-                loss = mse + 2. * snr_regularization
-                opt = tf.train.GradientDescentOptimizer(lr)
-                train_op = opt.minimize(loss)
-
-                with tf.Session() as sess:
-                    sess.run(tf.global_variables_initializer())
-                    for step in range(max_steps):
-                        y = generate_spatial_signals(batch_size)
-                        update, error, k, hw, cw, decoder, this_snr, snr_reg, ni, no = sess.run(
-                            [train_op, mse, kernel, ideal_horz_weights, ideal_center_weights,
-                             weights, snr, snr_regularization, n_in, n_out], feed_dict={label: y})
-                        errors.append(error)
-                        if step % 1000 == 0:
-                            print('Error at step %04d is %0.4f' %(step, error))
-                            results['input'].append(x)
-                            results['labels'].append(y)
-                            output = sess.run([out], feed_dict={label: y})[0]
-                            results['output'].append(output)
-                            results['kernel'].append(k)
-                            results['hw'].append(hw)
-                            results['cw'].append(cw)
-                            results['decoder'].append(decoder)
-                            results['snr'].append(this_snr)
-                            results['snr_reg'].append(snr_reg)
-                            results['input_noise'].append(ni)
-                            results['output_noise'].append(no)
-                        elif step == max_steps - 1:
-                            print('Error at step %04d is %0.4f' %(step, error))
-                            results['input'].append(x)
-                            results['labels'].append(y)
-                            output = sess.run([out], feed_dict={label: y})[0]
-                            results['output'].append(output)
-                            results['kernel'].append(k)
-                            results['hw'].append(hw)
-                            results['cw'].append(cw)
-                            results['decoder'].append(decoder)
-                            results['snr'].append(this_snr)
-                            results['snr_reg'].append(snr_reg)
-                            results['input_noise'].append(ni)
-                            results['output_noise'].append(no)
-
-            # Collect results.
-            this_mse = np.mean((np.squeeze(results['output'][-1]) - results['labels'][-1])**2)
-            # np.mean([np.mean(
-            #    (results['output'][-1][j] - results['labels'][-1][j])**2) for j in range(batch_size)])
-            this_err = sem((np.squeeze(results['output'][-1]) - results['labels'][-1])**2)
-            # this_err = sem([np.mean(
-            #    (results['output'][-1][j] - results['labels'][-1][j])**2) for j in range(batch_size)])
-
-            if random_initialization:
-                random_flag = 'random'
-            else:
-                random_flag = 'homogenous'
-
-            both_results[random_flag]['mean_errors'].append(this_mse)
-            both_results[random_flag]['sem_errors'].append(this_err)
-            both_results[random_flag]['results'].append(results)
-            both_results[random_flag]['errors'].append(errors)
-            both_results[random_flag]['channels'].append(channel_depth)
-
-            tf.reset_default_graph()
+                tf.reset_default_graph()
 
 
-np.save('/home/lane/code/ipython-notebooks/baccuslab/2017_10_9_diversity_both_results.npy', both_results)
+np.save('/home/lane/code/ipython-notebooks/baccuslab/2017_10_14_diversity_both_results.npy', both_results)
 
 
