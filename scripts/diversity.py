@@ -71,9 +71,12 @@ x = generate_spatial_signals(batch_size)
 input_len = x.shape[1]
 output_len = x.shape[1]
 max_steps = 10000
-lr = 0.002
+learning_rate = 0.01
+global_step = tf.Variable(1, name='global_step', trainable=False, dtype=tf.int32)
+increment_global_step_op = tf.assign(global_step, global_step+1)
+lr = tf.train.polynomial_decay(learning_rate, global_step, 1000, end_learning_rate=0.00001, power=1.0, cycle=False, name=None)
 gain = 1.0   # 0.5
-target_snrs = [100.0]
+target_snrs = [20.0]
 
 with tf.device('/gpu:0'):
     for target_snr in target_snrs:
@@ -152,6 +155,12 @@ with tf.device('/gpu:0'):
                     snr_regularization = tf.losses.mean_squared_error(
                             tf.constant(target_snr, dtype=tf.float32, shape=snr.shape), snr)
 
+                    global_step = tf.Variable(1, name='global_step', trainable=False, dtype=tf.int32)
+                    increment_global_step_op = tf.assign(global_step, global_step+1)
+                    lr = tf.train.polynomial_decay(learning_rate, global_step, max_steps, 
+                                                   end_learning_rate=0.00001, power=1.0, 
+                                                   cycle=False, name=None)
+
                     mse = tf.losses.mean_squared_error(label, tf.squeeze(out))
                     loss = mse + 2. * snr_regularization
                     # opt = tf.train.GradientDescentOptimizer(lr)
@@ -162,8 +171,8 @@ with tf.device('/gpu:0'):
                         sess.run(tf.global_variables_initializer())
                         for step in range(max_steps):
                             y = generate_spatial_signals(batch_size)
-                            update, error, k, hw, cw, decoder, this_snr, snr_reg, ni, no = sess.run(
-                                [train_op, mse, kernel, ideal_horz_weights, ideal_center_weights,
+                            update, step, error, k, hw, cw, decoder, this_snr, snr_reg, ni, no = sess.run(
+                                [train_op, increment_global_step_op, mse, kernel, ideal_horz_weights, ideal_center_weights,
                                  weights, snr, snr_regularization, n_in, n_out], feed_dict={label: y})
                             errors.append(error)
                             if step % 100 == 0:
@@ -206,9 +215,9 @@ with tf.device('/gpu:0'):
                 tf.reset_default_graph()
 
             if random_initialization:
-                np.save('/home/lane/code/ipython-notebooks/baccuslab/2017_10_27_diversity_random_results.npy', all_results)
+                np.save('/home/lane/code/ipython-notebooks/baccuslab/2017_10_27_diversity_random_results_20.npy', all_results)
             else:
-                np.save('/home/lane/code/ipython-notebooks/baccuslab/2017_10_27_diversity_homogenous_results.npy', all_results)
+                np.save('/home/lane/code/ipython-notebooks/baccuslab/2017_10_27_diversity_homogenous_results_20.npy', all_results)
 
 
 
